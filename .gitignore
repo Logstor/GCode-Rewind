@@ -1,4 +1,7 @@
 .vscode
 
+// All generated binaries
+bin*
+
 // Documentation can always be generated
 docs/**

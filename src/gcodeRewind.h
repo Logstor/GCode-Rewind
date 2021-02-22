@@ -2,6 +2,7 @@
 #ifndef GCODEREWIND_H
 #define GCODEREWIND
 
+#include <stdlib.h>
 #include <stdio.h>
 
 enum CMD
@@ -12,7 +13,7 @@ enum CMD
 };
 
 /**
- * @brief
+ * @brief Used as return type of library functions to indicate if everything went well.
  * 
  */
 typedef enum
@@ -31,7 +32,7 @@ struct GCodeFileInstance
     /**
      * @brief File pointer to the GCode file.
      */
-    const FILE* file;
+    FILE* file;
     
     /**
      * @brief The byte offset of where the printer currently is.
@@ -67,15 +68,52 @@ struct GCodeFileBufferedInstance
  * 
  * 
  * 
- * @param inFile
- * @param resFile
+ * @param inFile The GCodeFileInstance containing the GCode file pointer to be processed.
+ * @param resFile The GCodeFileInstance which to put the resulting GCode file pointer into.
  * 
  * @return RESULT OK or FAIL
  * 
- * @warning
+ * @warning NOT thread safe - Uses unlocked IO functions!
  */
 RESULT GCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInstance *resFile)
 {
+    // Check File Pointer
+    if (inFile == NULL || ferror_unlocked(inFile->file) != 0)
+    {
+        fputs("Error in FileStream!\n", stderr);
+        return FAIL;
+    }
+
+    // Allocate for file buffer
+    #ifdef GCODE_USE_STACK_MEM
+
+    char pFileBuf[inFile->byteOffset];
+
+    #else
+
+    char *pFileBuf = (char*) malloc(inFile->byteOffset);
+    if (pFileBuf == NULL)
+    {
+        fputs("Buffer Allocation for File buffer failed!\n", stderr);
+        return FAIL;
+    }
+
+    #endif
+
+    // Read file into the file buffer
+    size_t bytesRead = fread_unlocked(pFileBuf, sizeof(char), inFile->byteOffset, inFile->file);
+    if (bytesRead != inFile->byteOffset)
+    {
+        fputs("File wasn't big enough to read until the byteoffset!\n", stderr);
+        return FAIL;
+    }
+
+    // Clean up
+    #ifndef GCODE_USE_STACK_MEM
+    free(pFileBuf);
+    #endif
+
+
     return OK;
 }
 
