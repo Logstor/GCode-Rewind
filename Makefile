@@ -15,6 +15,11 @@ test: test/src/main.c
 	@echo
 
 docs: Doxyfile
+	@echo
+	@echo -- Generating Documentation --
+	@echo
 	doxygen Doxyfile
+	@echo
+	@echo -- Documentation Done! --
 
 # Static Analysis using Clang Tidy and Valgrind
