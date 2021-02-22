@@ -1,9 +1,11 @@
 
 #ifndef GCODEREWIND_H
-#define GCODEREWIND
+#define GCODEREWIND_H
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
 
 enum CMD
 {
@@ -37,7 +39,7 @@ struct GCodeFileInstance
     /**
      * @brief The byte offset of where the printer currently is.
      */
-    const int byteOffset;
+    size_t byteOffset;
 };
 
 /**
@@ -50,18 +52,41 @@ struct GCodeFileBufferedInstance
     /**
      * @brief Pointer to the char array.
      */
-    const char* buf;
+    char* buf;
 
     /**
      * @brief Byte size of the char array.
      */
-    const size_t size;
+    size_t size;
 
     /**
      * @brief Current offset where the printer has reached.
      */
-    const int byteOffset;
+    size_t byteOffset;
 };
+
+/**
+ * @brief This functions inserts a standard header to the buffer.
+ * 
+ * @param buffer The char buffer to insert the header data into.
+ * 
+ * @warning Be sure that the allocated buffer is big enough!
+ */
+void insertHeader(char* buffer)
+{
+    strcpy(buffer, 
+    "\
+    T0 ; Select head 0\n\
+    M302 P1 ; Allow cold extrusion\n\
+    G90 ; Absolute position\n\
+    M83 ; Relative extrusion\n\
+    G21 ; Metric values\n\
+    G1 U0 F6000.00 ; Set speed\n\
+    \n\
+    "
+    );
+}
+
 
 /**
  * @brief Generates a file from the inFile, which is reverted.
@@ -72,13 +97,14 @@ struct GCodeFileBufferedInstance
  * Beaware that this function isn't thread safe as the File IO functions used doesn't lock the file.
  * 
  * @param inFile The GCodeFileInstance containing the GCode file pointer to be processed.
- * @param resFile The GCodeFileInstance which to put the resulting GCode file pointer into.
+ * 
+ * @param resFile The GCodeFileInstance which is containing the file pointer to the newly created result file.
  * 
  * @return RESULT OK or FAIL
  * 
  * @warning NOT thread safe - Uses unlocked IO functions!
  */
-RESULT GCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInstance *resFile)
+RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInstance *resFile)
 {
     // Check File Pointer
     if (inFile == NULL || ferror_unlocked(inFile->file) != 0)
@@ -90,34 +116,51 @@ RESULT GCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
     // Allocate for file buffer
     #ifdef GCODE_USE_STACK_MEM
 
-    char pFileBuf[inFile->byteOffset];
+    char pInFileBuf[inFile->byteOffset];
+    char pOutFileBuf[inFile->byteOffset];
 
     #else
 
-    char *pFileBuf = (char*) malloc(inFile->byteOffset);
-    if (pFileBuf == NULL)
+    char *pInFileBuf = (char*) malloc(inFile->byteOffset);
+    if (pInFileBuf == NULL)
     {
-        fputs("Buffer Allocation for File buffer failed!\n", stderr);
+        fputs("Buffer Allocation for In File buffer failed!\n", stderr);
+        return FAIL;
+    }
+    char *pOutFileBuf = (char*) malloc(inFile->byteOffset);
+    if (pOutFileBuf == NULL)
+    {
+        fputs("Buffer Allocation for Out File buffer failed!\n", stderr);
+        free(pInFileBuf);
         return FAIL;
     }
 
     #endif
 
+    // Success flag for memory allocations
+    bool success = true;
+
     // Read file into the file buffer
-    size_t bytesRead = fread_unlocked(pFileBuf, sizeof(char), inFile->byteOffset, inFile->file);
+    size_t bytesRead = fread_unlocked(pInFileBuf, sizeof(char), inFile->byteOffset, inFile->file);
     if (bytesRead != inFile->byteOffset)
     {
         fputs("File wasn't big enough to read until the byteoffset!\n", stderr);
-        return FAIL;
+        success = false;
+        goto clean;
     }
 
+    // Insert header first
+    insertHeader(pOutFileBuf);
+
     // Clean up
+    clean:
     #ifndef GCODE_USE_STACK_MEM
-    free(pFileBuf);
+    free(pInFileBuf);
+    free(pOutFileBuf);
     #endif
 
-
-    return OK;
+    return (success) ? OK : FAIL;
 }
+
 
 #endif
