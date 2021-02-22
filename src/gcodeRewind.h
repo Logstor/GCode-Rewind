@@ -64,9 +64,12 @@ struct GCodeFileBufferedInstance
 };
 
 /**
- * @brief
+ * @brief Generates a file from the inFile, which is reverted.
  * 
+ * This function takes in a GCodeFileInstance, inFile, which contains a FILE* and corressponding byte offset. 
+ * The byte offset describes where the printer is stopped which is used to determine where we should start backtracking from.
  * 
+ * Beaware that this function isn't thread safe as the File IO functions used doesn't lock the file.
  * 
  * @param inFile The GCodeFileInstance containing the GCode file pointer to be processed.
  * @param resFile The GCodeFileInstance which to put the resulting GCode file pointer into.
