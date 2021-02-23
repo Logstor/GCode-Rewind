@@ -1,5 +1,8 @@
 .vscode
 
+// Generated GCode from tests
+test/res/result.gcode
+
 // All generated binaries
 bin*
 
