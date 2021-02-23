@@ -28,7 +28,7 @@ void insertHeaderTest()
 
 void gCodeRewindTest()
 {
-    struct GCodeFileInstance inFile = { .file = fopen("test/res/test1.gcode", "r"), .byteOffset = 1598 };
+    struct GCodeFileInstance inFile = { .file = fopen("test/res/test1.gcode", "r"), .byteOffset = 894 };
     struct GCodeFileInstance outFile = { .file = fopen("test/res/result.gcode", "w+"), .byteOffset = 0 };
 
     CU_ASSERT_EQUAL(gCodeRevert(&inFile, &outFile), OK);
@@ -44,11 +44,13 @@ void gCodeRewindTest()
     rewind(outFile.file);
 
     // Read output and validation file
-    char *pValidBuf = (char*) calloc(bSizeValid, sizeof(char));
-    char *pOutBuf   = (char*) calloc(bSizeOut, sizeof(char));
+    char *pValidBuf = (char*) calloc(bSizeValid + 1, sizeof(char));
+    char *pOutBuf   = (char*) calloc(bSizeOut + 1, sizeof(char));
 
     size_t inReadValid  = fread(pValidBuf, sizeof(char), bSizeValid, fValid);
     size_t inReadOut    = fread(pOutBuf, sizeof(char), bSizeOut, outFile.file);
+    pValidBuf[inReadValid]  = '\0';
+    pOutBuf[inReadOut]      = '\0';
 
     CU_ASSERT_EQUAL(inReadValid, inReadOut);// Make sure the same amount of bytes is read
     CU_ASSERT_TRUE(inReadOut > 0);          // Make sure anything is read

@@ -32,7 +32,7 @@ static void BM_gCodeRevert(benchmark::State& state)
   // Setup
   FILE* fp = fopen("res/small/test1.gcode", "r");
   FILE* fpout = fopen("res/out/result.gcode", "w+");
-  struct GCodeFileInstance inst   = { .file = fp, .byteOffset = 1200 };
+  struct GCodeFileInstance inst   = { .file = fp, .byteOffset = 1598 };
   struct GCodeFileInstance res    = { .file = fpout, .byteOffset = 0 };
 
   for (auto _ : state)

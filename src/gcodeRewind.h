@@ -227,7 +227,8 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
     fillOutBuffer(pInFileBuf, inFile->byteOffset, pOutFileBuf);
 
     // Write everything to file
-    fprintf(resFile->file, "%s", pOutFileBuf);
+    //fprintf(resFile->file, "%s", pOutFileBuf);
+    fwrite(pOutFileBuf, sizeof(char), (inFile->byteOffset*sizeof(char) + 1), resFile->file);
 
     // Clean up
     clean:
