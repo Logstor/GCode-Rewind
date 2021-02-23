@@ -66,6 +66,14 @@ valgrind: test/src/main.c
 	@echo
 	@echo -- DONE! --
 
+valgrindbench: test/src/main.c
+	@echo
+	@echo -- Running the benchmarks --
+	@echo
+	@$(VALGRIND) $(VALGRINDFLAGS) $(BENCHBIN)
+	@echo 
+	@echo -- DONE! --
+
 docs: Doxyfile
 	@echo
 	@echo -- Generating Documentation --
