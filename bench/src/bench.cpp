@@ -31,7 +31,7 @@ static void BM_gCodeRevert(benchmark::State& state)
 {
   // Setup
   FILE* fp = fopen("res/small/test1.gcode", "r");
-  FILE* fpout = fopen("res/out/result.gcode", "rw");
+  FILE* fpout = fopen("res/out/result.gcode", "w+");
   struct GCodeFileInstance inst   = { .file = fp, .byteOffset = 1200 };
   struct GCodeFileInstance res    = { .file = fpout, .byteOffset = 0 };
 
@@ -39,11 +39,11 @@ static void BM_gCodeRevert(benchmark::State& state)
   {
     gCodeRevert(&inst, &res);
     fseek(fp, 0, SEEK_SET);
-    //fseek(fpout, 0, SEEK_SET);
+    fseek(fpout, 0, SEEK_SET);
   }
 
   fclose(fp);
-  //fclose(fpout);
+  fclose(fpout);
 }
 BENCHMARK(BM_gCodeRevert);
 
