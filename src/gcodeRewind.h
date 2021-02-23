@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 enum CMD
 {
@@ -66,6 +67,21 @@ struct GCodeFileBufferedInstance
 };
 
 /**
+ * @brief Counts the amount of lines in the buffer.
+ * 
+ */
+uint32_t countNumberOfLines(const char *buffer, const size_t size)
+{
+    uint32_t lineCount = 0;
+    for (uint32_t i=0; i < size; i++)
+    {
+        if (buffer[i] == '\n') lineCount++;
+    }
+
+    return lineCount;
+}
+
+/**
  * @brief This functions inserts a standard header to the buffer.
  * 
  * @param buffer The char buffer to insert the header data into.
@@ -81,10 +97,49 @@ void insertHeader(char* buffer)
     G90 ; Absolute position\n\
     M83 ; Relative extrusion\n\
     G21 ; Metric values\n\
-    G1 U0 F6000.00 ; Set speed\n\
+    G1 U0 F6000.00 ; Set default printing speed\n\
     \n\
     "
     );
+}
+
+/**
+ * @brief 
+ * 
+ * @param inBuffer Should contain all the commands in natural order.
+ * 
+ * @param outBuffer Buffer to output the reversed commands.
+ * 
+ */
+void reverseGCodeCommands(char *inBuffer, const size_t inSize, char *outBuffer)
+{
+    // Count lines
+    uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
+    
+    // Fill all the lines into array
+    char *lines[lineCount];
+    lines[0] = strtok(inBuffer, "\n");
+    for (uint32_t i=1; i < lineCount; i++)
+    {
+        lines[i] = strtok(NULL, "\n");
+    }
+}
+
+/**
+ * @brief
+ * 
+ * @param
+ * 
+ * @param
+ * 
+ */
+void fillOutBuffer(char *inBuffer, const size_t inSize, char *outBuffer)
+{
+    // Write header to buffer
+    insertHeader(outBuffer);
+
+    // Write reversed commands to buffer
+    reverseGCodeCommands(inBuffer, inSize, outBuffer);
 }
 
 
@@ -114,12 +169,12 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
     }
 
     // Allocate for file buffer
-    #ifdef GCODE_USE_STACK_MEM
+#ifdef GCODE_USE_STACK_MEM
 
     char pInFileBuf[inFile->byteOffset];
     char pOutFileBuf[inFile->byteOffset];
 
-    #else
+#else
 
     char *pInFileBuf = (char*) malloc(inFile->byteOffset);
     if (pInFileBuf == NULL)
@@ -135,7 +190,7 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
         return FAIL;
     }
 
-    #endif
+#endif
 
     // Success flag for memory allocations
     bool success = true;
@@ -149,18 +204,21 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
         goto clean;
     }
 
-    // Insert header first
-    insertHeader(pOutFileBuf);
+    // Write reversed GCode to buffer
+    fillOutBuffer(pInFileBuf, inFile->byteOffset, pOutFileBuf);
+
+    // Write everything to file
+
 
     // Clean up
     clean:
-    #ifndef GCODE_USE_STACK_MEM
+#ifndef GCODE_USE_STACK_MEM
     free(pInFileBuf);
     free(pOutFileBuf);
-    #endif
+#endif
 
     return (success) ? OK : FAIL;
 }
 
 
-#endif
+#endif // GCODEREWIND_H
