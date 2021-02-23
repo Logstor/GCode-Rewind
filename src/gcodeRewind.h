@@ -91,15 +91,7 @@ uint32_t countNumberOfLines(const char *buffer, const size_t size)
 void insertHeader(char* buffer)
 {
     strcpy(buffer, 
-    "\
-    T0 ; Select head 0\n\
-    M302 P1 ; Allow cold extrusion\n\
-    G90 ; Absolute position\n\
-    M83 ; Relative extrusion\n\
-    G21 ; Metric values\n\
-    G1 U0 F6000.00 ; Set default printing speed\n\
-    \n\
-    "
+    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n"
     );
 }
 
