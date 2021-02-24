@@ -8,13 +8,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum CMD
-{
-    G,
-    M,
-    N
-};
-
 /**
  * @brief Used as return type of library functions to indicate if everything went well.
  * 
@@ -24,6 +17,25 @@ typedef enum
     OK,
     FAIL
 } RESULT;
+
+/**
+ * @brief A simple buffer struct to contain byte data.
+ * 
+ */
+struct ByteBuffer
+{
+    /**
+     * @brief Pointer to the byte buffer.
+     * 
+     */
+    char *buffer;
+
+    /**
+     * @brief Byte size of the buffer.
+     * 
+     */
+    size_t size;
+};
 
 /**
  * @brief GCode instance, where the data from file has to read.
@@ -104,61 +116,69 @@ void insertHeader(char* buffer)
  * 
  * @param outBuffer: Buffer to output the reversed commands.
  * 
+ * @return 
+ * 
  */
-void reverseGCodeCommands(char *inBuffer, const size_t inSize, char *outBuffer)
+struct ByteBuffer* reverseGCodeCommands(char *inBuffer, const size_t inSize)
 {
     #define MAX_LINE_SIZE 50
 
     // Count lines
-    uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
+    const uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
 
-    // Fill all the lines into array
+    // Temporary buffer
     char lines[lineCount][MAX_LINE_SIZE];
-    uint_fast8_t curr = 0;
-    char currCh; 
-    uint32_t currIndex = 0; int_fast32_t i;
-    for (i=0; i < lineCount; i++)
-    {
-        currCh = inBuffer[currIndex++];
-        while (currCh != (char)'\n')
-        {
-            lines[i][curr++] = currCh;
-            currCh = inBuffer[currIndex++];
-        }
-
-        lines[i][curr++]    = '\n'; 
-        lines[i][curr]      = '\0';
-
-        // Reset Indexes
-        curr = 0;
-    }
-
-    // Reverse all the lines into outBuffer
-    i--;
-    for (; i >= 0; i--)
-    {
-        strncat(outBuffer, lines[i], MAX_LINE_SIZE-1);
-    }
 
 }
 
 /**
- * @brief This function just fills the outBuffer with Header and reversed GCode.
+ * @brief This function allocates a ByteBuffer struct with Header and reversed GCode.
  * 
  * @param inBuffer: 
  * 
  * @param inSize: 
  * 
- * @param outBuffer:
+ * @return A ByteBuffer struct containing the reversed GCode with default header.
+ * 
+ * @warning Make sure to free the array in the ByteBuffer and the ByteBuffer itself.
  * 
  */
-void fillOutBuffer(char *inBuffer, const size_t inSize, char *outBuffer)
+struct ByteBuffer* fillOutBuffer(const char *inBuffer, const size_t inSize)
 {
-    // Write header to buffer
-    insertHeader(outBuffer);
+    // Declare header and buffer sizes
+    const char defaultHeader[] = "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n";
+    const size_t headerSize = strlen(defaultHeader);
+    const size_t totSize = headerSize + inSize;
 
-    // Write reversed commands to buffer
-    reverseGCodeCommands(inBuffer, inSize, outBuffer);
+    // Count lines and create buffers
+    const uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
+    char inBufCpy[inSize];
+    char *lines[lineCount];
+
+    // Make inBuffer copy
+    memcpy(inBufCpy, inBuffer, inSize);
+
+    // Divide into tokens, and copy the into lines
+    uint_fast32_t index = 0;
+    char *token = strtok(inBufCpy, "\n");
+    do {
+        lines[index++] = token;
+        token = strtok(NULL, "\n");
+    } while (token != NULL);
+
+    // Insert header to buffer
+    char *array = (char*) malloc(totSize * sizeof(char));
+    struct ByteBuffer *byteBufferOut = (struct ByteBuffer*) malloc(sizeof(struct ByteBuffer));
+    byteBufferOut->buffer = array; byteBufferOut->size = totSize;
+    strcpy(array, defaultHeader);
+
+    // Reverse code into buffer
+    do {
+        strcat(array, lines[--index]);
+    } while (index != 0);
+
+    // Return the ByteBuffer
+    return byteBufferOut;
 }
 
 /**
@@ -187,24 +207,17 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
     }
 
     // Allocate for file buffer
+    const size_t inFileBufSize = inFile->byteOffset+1;
 #ifdef GCODE_USE_STACK_MEM
-
-    char pInFileBuf[inFile->byteOffset+1];      // Plus null termination
-    char pOutFileBuf[inFile->byteOffset+1];     // Plus null termination
+    
+    char pInFileBuf[inFileBufSize];      // Plus null termination
 
 #else
 
-    char *pInFileBuf = (char*) malloc(inFile->byteOffset*sizeof(char) + 1);         // Plus null termination
+    char *pInFileBuf = (char*) malloc(inFileBufSize * sizeof(char));         // Plus null termination
     if (pInFileBuf == NULL)
     {
         fputs("Buffer Allocation for In File buffer failed!\n", stderr);
-        return FAIL;
-    }
-    char *pOutFileBuf = (char*) malloc( (inFile->byteOffset*sizeof(char) + 1) *2);  // Plus null termination //FIXME: This should be made accurate!
-    if (pOutFileBuf == NULL)
-    {
-        fputs("Buffer Allocation for Out File buffer failed!\n", stderr);
-        free(pInFileBuf);
         return FAIL;
     }
 
@@ -220,21 +233,21 @@ RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInsta
     {
         fputs("File wasn't big enough to read until the byteoffset!\n", stderr);
         success = false;
-        goto clean;
+        free(pInFileBuf);
+        return FAIL;
     }
 
     // Write reversed GCode to buffer
-    fillOutBuffer(pInFileBuf, inFile->byteOffset, pOutFileBuf);
+    struct ByteBuffer *genGCode = fillOutBuffer(pInFileBuf, inFile->byteOffset);
 
     // Write everything to file
     //fprintf(resFile->file, "%s", pOutFileBuf);
-    fwrite(pOutFileBuf, sizeof(char), (inFile->byteOffset*sizeof(char) + 1), resFile->file);
+    fwrite(genGCode->buffer, sizeof(char), genGCode->size, resFile->file);
 
     // Clean up
     clean:
 #ifndef GCODE_USE_STACK_MEM
     free(pInFileBuf);
-    free(pOutFileBuf);
 #endif
 
     return (success) ? OK : FAIL;
