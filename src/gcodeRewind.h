@@ -38,59 +38,73 @@ struct ByteBuffer
 };
 
 /**
- * @brief GCode instance, where the data from file has to read.
- * 
+ * @brief 
  * 
  */
-struct GCodeFileInstance
+struct LineBuffer 
 {
     /**
-     * @brief File pointer to the GCode file.
+     * @brief 
+     * 
      */
-    FILE* file;
-    
+    char **pLines;
+
     /**
-     * @brief The byte offset of where the printer currently is.
+     * @brief 
+     * 
      */
-    size_t byteOffset;
+    size_t count;
 };
 
 /**
- * @brief GCode instance, where the contents is loaded into RAM.
+ * @brief 
  * 
- * 
+ * @param initialCount: 
+ * @return struct LineBuffer* 
  */
-struct GCodeFileBufferedInstance
+static inline struct LineBuffer* allocLineBuffer(const size_t initialCount)
 {
-    /**
-     * @brief Pointer to the char array.
-     */
-    char* buf;
+    struct LineBuffer *lineBuffer = (struct LineBuffer*) malloc(sizeof(struct LineBuffer));
 
-    /**
-     * @brief Byte size of the char array.
-     */
-    size_t size;
+    lineBuffer->pLines  = (char**) malloc(sizeof(char*) * initialCount);
+    lineBuffer->count   = initialCount;
 
-    /**
-     * @brief Current offset where the printer has reached.
-     */
-    size_t byteOffset;
-};
+    return lineBuffer;
+}
 
 /**
- * @brief Counts the amount of lines in the buffer.
+ * @brief 
  * 
+ * @param lineBuffer: 
+ * 
+ * @warning If lines isn't stack allocated, then remember to dealloc them all.
  */
-uint32_t countNumberOfLines(const char *buffer, const size_t size)
-{
-    uint32_t lineCount = 0;
-    for (uint32_t i=0; i < size; i++)
-    {
-        if (buffer[i] == '\n') lineCount++;
-    }
+static inline void freeLineBuffer(struct LineBuffer *lineBuffer)
+{ free(lineBuffer->pLines); free(lineBuffer); }
 
-    return lineCount;
+
+/**
+ * @brief 
+ * 
+ * @param byteBuffer 
+ */
+static inline void freeByteBuffer(struct ByteBuffer *byteBuffer) 
+{ free(byteBuffer->buffer); free(byteBuffer); }
+
+/**
+ * @brief This can be seen as constructor for a ByteBuffer.
+ * 
+ * @param size: The size of the buffer.
+ * @return struct ByteBuffer* 
+ */
+static inline struct ByteBuffer* allocByteBuffer(const size_t size)
+{
+    struct ByteBuffer *pByteBuffer = (struct ByteBuffer*) malloc(sizeof(struct ByteBuffer));
+
+    pByteBuffer->buffer = (char*) malloc(size);
+    pByteBuffer->size   = size;
+
+    return pByteBuffer;
 }
 
 /**
@@ -100,7 +114,7 @@ uint32_t countNumberOfLines(const char *buffer, const size_t size)
  * 
  * @warning Be sure that the allocated buffer is big enough!
  */
-void insertHeader(char* buffer)
+static inline void insertHeader(char* buffer)
 {
     strcpy(buffer, 
     "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n"
@@ -108,27 +122,20 @@ void insertHeader(char* buffer)
 }
 
 /**
- * @brief Reverses the GCode in inBuffer, and outputs it to outBuffer.
+ * @brief This functions inserts a standard header to the ByteBuffer.
  * 
- * @param inBuffer: Should contain all the commands in natural order.
+ * This won't copy more data into the ByteBuffer, than the size of the ByteBuffer.
  * 
- * @param inSize: 
+ * @param buffer: ByteBuffer struct.
  * 
- * @param outBuffer: Buffer to output the reversed commands.
- * 
- * @return 
- * 
+ * @warning Be sure that the allocated buffer is big enough!
  */
-struct ByteBuffer* reverseGCodeCommands(char *inBuffer, const size_t inSize)
+static inline void insertHeader(struct ByteBuffer *byteBuffer)
 {
-    #define MAX_LINE_SIZE 50
-
-    // Count lines
-    const uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
-
-    // Temporary buffer
-    char lines[lineCount][MAX_LINE_SIZE];
-
+    strncpy(byteBuffer->buffer, 
+    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n", 
+    byteBuffer->size
+    );
 }
 
 /**
@@ -143,114 +150,81 @@ struct ByteBuffer* reverseGCodeCommands(char *inBuffer, const size_t inSize)
  * @warning Make sure to free the array in the ByteBuffer and the ByteBuffer itself.
  * 
  */
-struct ByteBuffer* fillOutBuffer(const char *inBuffer, const size_t inSize)
+struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuffer)
 {
-    // Declare header and buffer sizes
-    const char defaultHeader[] = "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n";
-    const size_t headerSize = strlen(defaultHeader);
-    const size_t totSize = headerSize + inSize;
+    // Declare header and size
+    char header[1024]; insertHeader(header);
+    const uint32_t headerLength = strlen(header);
 
-    // Count lines and create buffers
-    const uint32_t lineCount = countNumberOfLines(inBuffer, inSize);
-    char inBufCpy[inSize];
-    char *lines[lineCount];
+    // Create output buffer
+    uint32_t inputLength = 0;
+    uint_fast32_t i;
+    for (i=0; i < pLineBuffer->count; i++)
+        inputLength += strlen(pLineBuffer->pLines[i]);
 
-    // Make inBuffer copy
-    memcpy(inBufCpy, inBuffer, inSize);
-
-    // Divide into tokens, and copy the into lines
-    uint_fast32_t index = 0;
-    char *token = strtok(inBufCpy, "\n");
-    do {
-        lines[index++] = token;
-        token = strtok(NULL, "\n");
-    } while (token != NULL);
+    struct ByteBuffer *pByteBufferOut = allocByteBuffer(headerLength + inputLength + 1);
 
     // Insert header to buffer
-    char *array = (char*) malloc(totSize * sizeof(char));
-    struct ByteBuffer *byteBufferOut = (struct ByteBuffer*) malloc(sizeof(struct ByteBuffer));
-    byteBufferOut->buffer = array; byteBufferOut->size = totSize;
-    strcpy(array, defaultHeader);
+    strcpy(pByteBufferOut->buffer, header);
 
     // Reverse code into buffer
-    do {
-        strcat(array, lines[--index]);
-    } while (index != 0);
+    while (i != 0)
+    {
+        strcat(pByteBufferOut->buffer, pLineBuffer->pLines[--i]);
+    }
 
     // Return the ByteBuffer
-    return byteBufferOut;
+    return pByteBufferOut;
+}
+
+/**
+ * @brief 
+ * 
+ * @param file 
+ * @return struct LineBuffer* 
+ * 
+ * @warning Make sure to free LineBuffer!
+ */
+static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
+{
+    // Open inFile
+
+    // Read inFile lines into LineBuffer
+
+    // Close inFile
+
+    // Return
+}
+
+static inline void writeByteBufferToFile(const char* file, const ByteBuffer* byteBuffer)
+{
+    // Open file
+
+    // Write to file
+
+    // Close file
+
+    // Return
 }
 
 /**
  * @brief Generates a file from the inFile, which is reverted.
  * 
- * This function takes in a GCodeFileInstance, inFile, which contains a FILE* and corressponding byte offset. 
- * The byte offset describes where the printer is stopped which is used to determine where we should start backtracking from.
- * 
- * Beaware that this function isn't thread safe as the File IO functions used doesn't lock the file.
- * 
- * @param inFile The GCodeFileInstance containing the GCode file pointer to be processed.
- * 
- * @param resFile The GCodeFileInstance which is containing the file pointer to the newly created result file.
- * 
  * @return RESULT OK or FAIL
  * 
  * @warning NOT thread safe - Uses unlocked IO functions!
  */
-RESULT gCodeRevert(const struct GCodeFileInstance *inFile, struct GCodeFileInstance *resFile)
+RESULT gCodeRevert(const char* inFilename, const char* outFilename)
 {
-    // Check File Pointer
-    if (inFile == NULL || ferror_unlocked(inFile->file) != 0)
-    {
-        fputs("Error in FileStream!\n", stderr);
-        return FAIL;
-    }
+    // Read inFile to LineBuffer -readFileIntoLineBuffer()
 
-    // Allocate for file buffer
-    const size_t inFileBufSize = inFile->byteOffset+1;
-#ifdef GCODE_USE_STACK_MEM
-    
-    char pInFileBuf[inFileBufSize];      // Plus null termination
+    // Create and fill a ByteBuffer with header and reverted code -fillOutBuffer()
 
-#else
+    // Write the whole ByteBuffer to outFile -writeByteBufferToFile()
 
-    char *pInFileBuf = (char*) malloc(inFileBufSize * sizeof(char));         // Plus null termination
-    if (pInFileBuf == NULL)
-    {
-        fputs("Buffer Allocation for In File buffer failed!\n", stderr);
-        return FAIL;
-    }
+    // Free everything
 
-#endif
-
-    // Success flag for memory allocations
-    bool success = true;
-
-    // Read file into the file buffer
-    size_t bytesRead = fread_unlocked(pInFileBuf, sizeof(char), inFile->byteOffset, inFile->file);
-    pInFileBuf[bytesRead] = '\0';       // Add Null termination
-    if (bytesRead != inFile->byteOffset)
-    {
-        fputs("File wasn't big enough to read until the byteoffset!\n", stderr);
-        success = false;
-        free(pInFileBuf);
-        return FAIL;
-    }
-
-    // Write reversed GCode to buffer
-    struct ByteBuffer *genGCode = fillOutBuffer(pInFileBuf, inFile->byteOffset);
-
-    // Write everything to file
-    //fprintf(resFile->file, "%s", pOutFileBuf);
-    fwrite(genGCode->buffer, sizeof(char), genGCode->size, resFile->file);
-
-    // Clean up
-    clean:
-#ifndef GCODE_USE_STACK_MEM
-    free(pInFileBuf);
-#endif
-
-    return (success) ? OK : FAIL;
+    return OK;
 }
 
 
