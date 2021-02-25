@@ -1,5 +1,8 @@
 .vscode
 
+// Ignore big resources
+res/big/**
+
 // Generated GCode from tests
 test/res/result.gcode
 bench/out/**

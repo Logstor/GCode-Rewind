@@ -24,6 +24,13 @@ buildtest:
 	@echo
 	@echo -- Done! --
 
+buildtestbig:
+	@echo
+	@echo -- Compiling test source --
+	@$(COMPILER) $(TESTFLAGS) -DGCODE_REWIND_TEST_BIG $(TESTSOURCE) -o $(TESTBIN)
+	@echo
+	@echo -- Done! --
+
 buildbench:
 	@echo
 	@echo -- Compiling bench source --
@@ -32,6 +39,13 @@ buildbench:
 	@echo -- Done! --
 
 test: buildtest
+	@echo -- Running the tests --
+	@echo
+	@./$(TESTBIN)
+	@echo
+	@echo -- DONE! --
+
+testbig: buildtestbig
 	@echo -- Running the tests --
 	@echo
 	@./$(TESTBIN)
