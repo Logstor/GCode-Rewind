@@ -2,8 +2,8 @@ COMPILER := gcc
 BENCHCOMPILER := g++
 VALGRIND := valgrind
 
-BENCHFLAGS := -Wall -g -O0 -std=c++11 -lbenchmark -lpthread 
-TESTFLAGS := -Wall -ggdb3 -O0 -lcunit -fstack-protector-strong
+BENCHFLAGS := -O2 -std=c++11 -lbenchmark -lpthread 
+TESTFLAGS := -Wall -ggdb3 -O0 -lcunit -fstack-protector-strong -Wpedantic -Wextra
 VALGRINDFLAGS := --leak-check=full --track-origins=yes --track-fds=yes --time-stamp=yes
 
 SOURCE := $(src/**)
