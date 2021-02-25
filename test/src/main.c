@@ -6,7 +6,7 @@
 
 #include "tests.h"
 
-#define GCODE_REWIND_TRY_TESTS
+//#define GCODE_REWIND_TRY_TESTS
 
 int setup() 
 {
