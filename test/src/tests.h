@@ -5,68 +5,68 @@
 #include "../../src/gcodeRewind.h"
 
 #include <CUnit/CUnit.h>
+#include <stdio.h>
 
-void countNumberOfLinesTest()
+void gCodeRewindTryTest()
 {
-    const char *s = 
-    "Here\n\
-    is\n\
-    six\n\
-    lines\n\
-    to\n\
-    test\n";
+    const char testFilename[]   = "test/res/test1.gcode";
+    const char resultFilename[] = "test/res/result.gcode";
 
-    int res = countNumberOfLines(s, strlen(s));
-    CU_ASSERT_EQUAL(res, 6);
-};
+    RESULT res = gCodeRevertTry(testFilename, resultFilename);
 
-void insertHeaderTest()
-{
-    char buf[1024];
-    insertHeader(buf);
+    CU_ASSERT_EQUAL(res, OK);
 }
 
 void gCodeRewindTest()
 {
-    struct GCodeFileInstance inFile = { .file = fopen("test/res/test1.gcode", "r"), .byteOffset = 894 };
-    struct GCodeFileInstance outFile = { .file = fopen("test/res/result.gcode", "w+"), .byteOffset = 0 };
+    const char testFilename[]   = "test/res/test1.gcode";
+    const char resultFilename[] = "test/res/result.gcode";
 
-    CU_ASSERT_EQUAL(gCodeRevert(&inFile, &outFile), OK);
+    RESULT res = gCodeRevert(testFilename, resultFilename);
 
-    // ------------ Test output ------------
-    FILE* fValid = fopen("test/res/validate.gcode", "r");
-    fseek(fValid, 0, SEEK_END);
-    long bSizeValid = ftell(fValid);
-    rewind(fValid);
+    CU_ASSERT_EQUAL(res, OK);
+}
 
-    fseek(outFile.file, 0, SEEK_END);
-    long bSizeOut = ftell(outFile.file);
-    rewind(outFile.file);
+void gCodeRewindBigTryTest()
+{
+    const char testFilename1[]  = "res/big/AngolaHouseLH40.gcode";
+    const char testFilename2[]  = "res/big/AngolaHouse.gcode";
+    const char testFilename3[]  = "res/big/4housesLH20.gcode";
 
-    // Read output and validation file
-    char *pValidBuf = (char*) calloc(bSizeValid + 1, sizeof(char));
-    char *pOutBuf   = (char*) calloc(bSizeOut + 1, sizeof(char));
+    const char resFilename[]    = "res/result.gcode";
 
-    size_t inReadValid  = fread(pValidBuf, sizeof(char), bSizeValid, fValid);
-    size_t inReadOut    = fread(pOutBuf, sizeof(char), bSizeOut, outFile.file);
-    pValidBuf[inReadValid]  = '\0';
-    pOutBuf[inReadOut]      = '\0';
+    // Run tests
+    RESULT res1 = gCodeRevertTry(testFilename1, resFilename);
+    RESULT res2 = gCodeRevertTry(testFilename2, resFilename);
+    RESULT res3 = gCodeRevertTry(testFilename3, resFilename);
 
-    CU_ASSERT_EQUAL(inReadValid, inReadOut);// Make sure the same amount of bytes is read
-    CU_ASSERT_TRUE(inReadOut > 0);          // Make sure anything is read
-    CU_ASSERT_TRUE(pOutBuf[0] != '\0');     // Make sure first character isn't "String end"
+    // Asserts
+    CU_ASSERT_EQUAL(res1, OK);
+    CU_ASSERT_EQUAL(res2, OK);
+    CU_ASSERT_EQUAL(res3, OK);
 
-    int cmpRes = memcmp(pValidBuf, pOutBuf, inReadValid);
-    printf("\n\nValidate buffer:\n%s\n\nOut Buffer:\n%s\n\n", pValidBuf, pOutBuf);
-    
-    CU_ASSERT_EQUAL(cmpRes, 0);             // Make sure the buffers is equal
+    remove(resFilename);
+}
 
-    // ------------ Close files and cleanup ------------
-    free(pValidBuf);
-    free(pOutBuf);
-    fclose(fValid);
-    fclose(inFile.file);
-    fclose(outFile.file);
+void gCodeRewindBigTest()
+{
+    const char testFilename1[]  = "res/big/AngolaHouseLH40.gcode";
+    const char testFilename2[]  = "res/big/AngolaHouse.gcode";
+    const char testFilename3[]  = "res/big/4housesLH20.gcode";
+
+    const char resFilename[]    = "res/result.gcode";
+
+    // Run tests
+    RESULT res1 = gCodeRevert(testFilename1, resFilename);
+    RESULT res2 = gCodeRevert(testFilename2, resFilename);
+    RESULT res3 = gCodeRevert(testFilename3, resFilename);
+
+    // Asserts
+    CU_ASSERT_EQUAL(res1, OK);
+    CU_ASSERT_EQUAL(res2, OK);
+    CU_ASSERT_EQUAL(res3, OK);
+
+    remove(resFilename);
 }
 
 #endif // TESTHEADER_H

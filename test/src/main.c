@@ -6,6 +6,8 @@
 
 #include "tests.h"
 
+#define GCODE_REWIND_TRY_TESTS
+
 int setup() 
 {
     // Create Suite
@@ -17,9 +19,20 @@ int setup()
     }
 
     // Add Unit tests
-    CU_ADD_TEST(unitSuite, countNumberOfLinesTest);
-    CU_ADD_TEST(unitSuite, insertHeaderTest);
     CU_ADD_TEST(unitSuite, gCodeRewindTest);
+#ifdef GCODE_REWIND_TEST_BIG 
+    CU_ADD_TEST(unitSuite, gCodeRewindBigTest);
+#endif
+
+#ifdef GCODE_REWIND_TRY_TESTS
+    CU_pSuite unitTrySuite = CU_add_suite("Unit try tests", NULL, NULL);
+
+    CU_ADD_TEST(unitTrySuite, gCodeRewindTryTest);
+    #ifdef GCODE_REWIND_TEST_BIG 
+        CU_ADD_TEST(unitTrySuite, gCodeRewindBigTryTest);
+    #endif
+
+#endif
     
     return 0;
 }

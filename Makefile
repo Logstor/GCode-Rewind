@@ -2,8 +2,8 @@ COMPILER := gcc
 BENCHCOMPILER := g++
 VALGRIND := valgrind
 
-BENCHFLAGS := -Wall -g -O0 -std=c++11 -lbenchmark -lpthread #-DGCODE_USE_STACK_MEM
-TESTFLAGS := -Wall -ggdb3 -O0 -lcunit #-DGCODE_USE_STACK_MEM
+BENCHFLAGS := -Wall -g -O0 -std=c++11 -lbenchmark -lpthread 
+TESTFLAGS := -Wall -ggdb3 -O0 -lcunit -fstack-protector-strong
 VALGRINDFLAGS := --leak-check=full --track-origins=yes --track-fds=yes --time-stamp=yes
 
 SOURCE := $(src/**)
@@ -13,42 +13,46 @@ TESTSOURCE := test/src/*.c
 BENCHBIN := bench/bin/benchbin
 TESTBIN := test/bin/testbin
 
-test: test/src/main.c
+all: build docs
+
+build: buildtest buildbench
+
+buildtest:
 	@echo
 	@echo -- Compiling test source --
 	@$(COMPILER) $(TESTFLAGS) $(TESTSOURCE) -o $(TESTBIN)
-	@echo -- Running the tests --
 	@echo
-	@./$(TESTBIN)
-	@echo
-	@echo -- DONE! --
+	@echo -- Done! --
 
-teststack: test/src/main.c
+buildtestbig:
 	@echo
 	@echo -- Compiling test source --
-	@$(COMPILER) $(TESTFLAGS) -DGCODE_USE_STACK_MEM $(TESTSOURCE) -o $(TESTBIN)
-	@echo -- Running the tests --
+	@$(COMPILER) $(TESTFLAGS) -DGCODE_REWIND_TEST_BIG $(TESTSOURCE) -o $(TESTBIN)
 	@echo
-	@./$(TESTBIN)
-	@echo
-	@echo -- DONE! --
+	@echo -- Done! --
 
-bench: bench/src/bench.cpp
+buildbench:
 	@echo
 	@echo -- Compiling bench source --
 	@$(BENCHCOMPILER) $(BENCHFLAGS) $(BENCHSOURCE) -o $(BENCHBIN)
 	@echo
-	@echo -- Running the benchmarks --
+	@echo -- Done! --
+
+test: buildtest
+	@echo -- Running the tests --
 	@echo
-	@./$(BENCHBIN)
+	@./$(TESTBIN)
 	@echo
 	@echo -- DONE! --
 
-benchstack: bench/src/bench.cpp
+testbig: buildtestbig
+	@echo -- Running the tests --
 	@echo
-	@echo -- Compiling bench source --
-	@$(BENCHCOMPILER) $(BENCHFLAGS) -DGCODE_USE_STACK_MEM $(BENCHSOURCE) -o $(BENCHBIN)
+	@./$(TESTBIN)
 	@echo
+	@echo -- DONE! --
+
+bench: buildbench
 	@echo -- Running the benchmarks --
 	@echo
 	@./$(BENCHBIN)
@@ -56,10 +60,15 @@ benchstack: bench/src/bench.cpp
 	@echo -- DONE! --
 
 # Static and Dynamic Analysis with Valgrind
-valgrind: test/src/main.c
+staticanalysis:
 	@echo
 	@echo -- Compiling test source --
-	@$(COMPILER) $(TESTFLAGS) $(TESTSOURCE) -o $(TESTBIN)
+	@$(COMPILER) $(TESTFLAGS) -fanalyzer $(TESTSOURCE) -o $(TESTBIN)
+	@echo
+	@echo -- Done! --
+
+valgrind: test/src/main.c
+	@echo
 	@echo -- Running the tests --
 	@echo
 	@$(VALGRIND) $(VALGRINDFLAGS) $(TESTBIN)
