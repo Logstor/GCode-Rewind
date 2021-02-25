@@ -6,6 +6,8 @@ res/big/**
 // Generated GCode from tests
 test/res/result.gcode
 test/res/resulttry.gcode
+res/result.gcode
+res/resulttry.gcode
 bench/out/**
 
 // All generated binaries
