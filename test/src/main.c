@@ -6,8 +6,6 @@
 
 #include "tests.h"
 
-//#define GCODE_REWIND_TRY_TESTS
-
 int setup() 
 {
     // Create Suite
@@ -37,7 +35,7 @@ int setup()
     return 0;
 }
 
-int main(int argc, char** argv)
+int main()
 {
     // Start Framework
     if (CU_initialize_registry() != CUE_SUCCESS)
