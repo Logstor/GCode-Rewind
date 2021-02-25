@@ -70,16 +70,27 @@ struct LineBuffer
 };
 
 /**
- * @brief 
+ * @brief Allocates a new LineBuffer with initialCount lines and zero allocated lines.
  * 
  * @param initialCount: 
- * @return struct LineBuffer* 
+ * @return struct LineBuffer* or NULL if failing.
  */
 static inline struct LineBuffer* allocLineBuffer(const size_t initialCount)
 {
     struct LineBuffer *lineBuffer = (struct LineBuffer*) malloc(sizeof(struct LineBuffer));
+    if (lineBuffer == NULL)
+    {
+        fputs("Allocation for the LineBuffer struct failed", stderr);
+        return NULL;
+    }
 
-    lineBuffer->pLines  = (char**) malloc(sizeof(char*) * initialCount);
+    // Allocate and check allocation before proceeding
+    lineBuffer->pLines = (char**) malloc(sizeof(char*) * initialCount);
+    if (lineBuffer->pLines == NULL)
+    {
+        fprintf(stderr, "\nLineBuffer allocation of %lu lines failed!\n", initialCount);
+        return NULL;
+    }
     lineBuffer->count   = initialCount;
     lineBuffer->linesAllocated = 0;
 
@@ -96,17 +107,30 @@ static inline struct LineBuffer* allocLineBuffer(const size_t initialCount)
 static inline int reallocLineBuffer(struct LineBuffer* lineBuffer, const size_t nCount)
 {
     // Allocate the double size and update the LineBuffer
+    void *nptr;
     if (nCount == 0)
     {
         const size_t newCount = lineBuffer->count * 2;
-        lineBuffer->pLines = (char**) realloc(lineBuffer->pLines, newCount);
+        nptr = (char**) realloc(lineBuffer->pLines, newCount);
+        if (nptr == NULL)
+        {
+            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\n", newCount);
+            return -1;
+        }
+        lineBuffer->pLines = (char**) nptr;
         lineBuffer->count = newCount;
     }
     
     // Allocate the given size to the LineBuffer and update
     else
     {
-        lineBuffer->pLines = (char**) realloc(lineBuffer->pLines, nCount);
+        nptr = (char**) realloc(lineBuffer->pLines, nCount);
+        if (nptr == NULL)
+        {
+            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\n", nCount);
+            return -1;
+        }
+        lineBuffer->pLines = (char**) nptr;
         lineBuffer->count = nCount;
     }
 
@@ -241,6 +265,11 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
 
     // Create LineBuffer with initial size
     struct LineBuffer *pLineBuffer = allocLineBuffer(GCODE_INITIAL_LINE_BUFFER_SIZE);
+    if (pLineBuffer == NULL)
+    {
+        fclose(fp);
+        return NULL;
+    }
 
     // Read inFile lines into LineBuffer
     char *readRes; 
@@ -250,7 +279,14 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
     {
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
-            reallocLineBuffer(pLineBuffer, 0);
+        {
+            if ( reallocLineBuffer(pLineBuffer, 0) != 0 )
+            {
+                freeLineBuffer(pLineBuffer);
+                fclose(fp);
+                return NULL;
+            }
+        }
         
         // Read into temp buffer
         readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
@@ -261,6 +297,15 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
 
         // Copy into LineBuffer
         pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));
+        if (pLineBuffer->pLines[index] == NULL)
+        {
+            fprintf(stderr, "\nAllocation of line %lu failed!\n", index);
+            free(pLineBuffer->pLines[index]);
+            freeLineBuffer(pLineBuffer);
+            fclose(fp);
+            return NULL;
+        }
+
         pLineBuffer->linesAllocated++;
         strcpy(pLineBuffer->pLines[index], tmpLine);
 
@@ -313,6 +358,8 @@ RESULT gCodeRevert(const char* inFilename, const char* outFilename)
 {
     // Read inFile to LineBuffer -readFileIntoLineBuffer()
     struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename);
+    if (pLineBuffer == NULL)
+        return FAIL;
 
     // Create and fill a ByteBuffer with header and reverted code -fillOutBuffer()
     struct ByteBuffer *pByteBuffer = fillOutBuffer(pLineBuffer);
