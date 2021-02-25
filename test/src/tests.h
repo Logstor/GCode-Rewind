@@ -7,6 +7,16 @@
 #include <CUnit/CUnit.h>
 #include <stdio.h>
 
+void gCodeRewindTryTest()
+{
+    const char testFilename[]   = "test/res/test1.gcode";
+    const char resultFilename[] = "test/res/result.gcode";
+
+    RESULT res = gCodeRevertTry(testFilename, resultFilename);
+
+    CU_ASSERT_EQUAL(res, OK);
+}
+
 void gCodeRewindTest()
 {
     const char testFilename[]   = "test/res/test1.gcode";
@@ -15,6 +25,27 @@ void gCodeRewindTest()
     RESULT res = gCodeRevert(testFilename, resultFilename);
 
     CU_ASSERT_EQUAL(res, OK);
+}
+
+void gCodeRewindBigTryTest()
+{
+    const char testFilename1[]  = "res/big/AngolaHouseLH40.gcode";
+    const char testFilename2[]  = "res/big/AngolaHouse.gcode";
+    const char testFilename3[]  = "res/big/4housesLH20.gcode";
+
+    const char resFilename[]    = "res/result.gcode";
+
+    // Run tests
+    RESULT res1 = gCodeRevertTry(testFilename1, resFilename);
+    RESULT res2 = gCodeRevertTry(testFilename2, resFilename);
+    RESULT res3 = gCodeRevertTry(testFilename3, resFilename);
+
+    // Asserts
+    CU_ASSERT_EQUAL(res1, OK);
+    CU_ASSERT_EQUAL(res2, OK);
+    CU_ASSERT_EQUAL(res3, OK);
+
+    remove(resFilename);
 }
 
 void gCodeRewindBigTest()

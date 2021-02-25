@@ -375,5 +375,72 @@ RESULT gCodeRevert(const char* inFilename, const char* outFilename)
     return OK;
 }
 
+/* ------------------------ Testing area ------------------------ */
+
+/**
+ * @brief This function allocates a ByteBuffer struct with Header and reversed GCode.
+ * 
+ * @param inBuffer: 
+ * 
+ * @param inSize: 
+ * 
+ * @return A ByteBuffer struct containing the reversed GCode with default header.
+ * 
+ * @warning Make sure to free the array in the ByteBuffer and the ByteBuffer itself.
+ * 
+ */
+static inline struct ByteBuffer* fillOutBufferTry(const struct LineBuffer* pLineBuffer)
+{
+    // Declare header and size
+    char header[1024]; insertHeader(header);
+    const uint32_t headerLength = strlen(header);
+
+    // Create output buffer
+    uint32_t inputLength = 0;
+    uint_fast32_t i;
+    for (i=0; i < pLineBuffer->linesAllocated; i++)
+        inputLength += strlen(pLineBuffer->pLines[i]);
+
+    struct ByteBuffer *pByteBufferOut = allocByteBuffer(headerLength + inputLength + 1);
+
+    // Insert header to buffer
+    strcpy(pByteBufferOut->buffer, header);
+
+    // Reverse code into buffer
+    while (i != 0)
+    {
+        strcat(pByteBufferOut->buffer, pLineBuffer->pLines[--i]);
+    }
+
+    // Return the ByteBuffer
+    return pByteBufferOut;
+}
+
+/**
+ * @brief Generates a file from the inFile, which is reverted.
+ * 
+ * @return RESULT OK or FAIL
+ * 
+ * @warning NOT thread safe - Uses unlocked IO functions!
+ */
+RESULT gCodeRevertTry(const char* inFilename, const char* outFilename)
+{
+    // Read inFile to LineBuffer -readFileIntoLineBuffer()
+    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename);
+    if (pLineBuffer == NULL)
+        return FAIL;
+
+    // Create and fill a ByteBuffer with header and reverted code -fillOutBuffer()
+    struct ByteBuffer *pByteBuffer = fillOutBufferTry(pLineBuffer);
+
+    // Write the whole ByteBuffer to outFile -writeByteBufferToFile()
+    writeByteBufferToFile(outFilename, pByteBuffer);
+
+    // Free everything
+    freeLineBuffer(pLineBuffer);
+    freeByteBuffer(pByteBuffer);
+
+    return OK;
+}
 
 #endif // GCODEREWIND_H
