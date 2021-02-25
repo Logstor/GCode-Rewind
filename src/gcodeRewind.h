@@ -8,6 +8,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define GCODE_INITIAL_LINE_BUFFER_SIZE 2
+#define GCODE_LINE_BUFFER_LINE_LENGTH 50
+
 /**
  * @brief Used as return type of library functions to indicate if everything went well.
  * 
@@ -38,7 +41,9 @@ struct ByteBuffer
 };
 
 /**
- * @brief 
+ * @brief Container for an array of lines.
+ * 
+ * @note Heap allocations should be made with LineBuffer allocator.
  * 
  */
 struct LineBuffer 
@@ -54,6 +59,14 @@ struct LineBuffer
      * 
      */
     size_t count;
+
+    /**
+     * @brief Describes how many lines of the "count" lines that have been allocated.
+     * 
+     * @example for (int i=0; i < linesAllocated; i++) free(pLines[i]);
+     * 
+     */
+    size_t linesAllocated;
 };
 
 /**
@@ -68,20 +81,51 @@ static inline struct LineBuffer* allocLineBuffer(const size_t initialCount)
 
     lineBuffer->pLines  = (char**) malloc(sizeof(char*) * initialCount);
     lineBuffer->count   = initialCount;
+    lineBuffer->linesAllocated = 0;
 
     return lineBuffer;
 }
 
 /**
- * @brief 
+ * @brief Reallocates to fit more lines in the given LineBuffer. If nCount is 0 it just doubles the size.
+ * 
+ * @param lineBuffer 
+ * @param nCount 
+ * @return int 
+ */
+static inline int reallocLineBuffer(struct LineBuffer* lineBuffer, const size_t nCount)
+{
+    // Allocate the double size and update the LineBuffer
+    if (nCount == 0)
+    {
+        const size_t newCount = lineBuffer->count * 2;
+        lineBuffer->pLines = (char**) realloc(lineBuffer->pLines, newCount);
+        lineBuffer->count = newCount;
+    }
+    
+    // Allocate the given size to the LineBuffer and update
+    else
+    {
+        lineBuffer->pLines = (char**) realloc(lineBuffer->pLines, nCount);
+        lineBuffer->count = nCount;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Function to free LineBuffer. Should only be used if everything is heap allocated.
  * 
  * @param lineBuffer: 
  * 
- * @warning If lines isn't stack allocated, then remember to dealloc them all.
  */
 static inline void freeLineBuffer(struct LineBuffer *lineBuffer)
-{ free(lineBuffer->pLines); free(lineBuffer); }
-
+{ 
+    for (uint_fast32_t i=0; i < lineBuffer->linesAllocated; i++)
+        free(lineBuffer->pLines[i]);
+    free(lineBuffer->pLines); 
+    free(lineBuffer); 
+}
 
 /**
  * @brief 
@@ -130,7 +174,7 @@ static inline void insertHeader(char* buffer)
  * 
  * @warning Be sure that the allocated buffer is big enough!
  */
-static inline void insertHeader(struct ByteBuffer *byteBuffer)
+static inline void insertnHeader(struct ByteBuffer *byteBuffer)
 {
     strncpy(byteBuffer->buffer, 
     "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n", 
@@ -150,7 +194,7 @@ static inline void insertHeader(struct ByteBuffer *byteBuffer)
  * @warning Make sure to free the array in the ByteBuffer and the ByteBuffer itself.
  * 
  */
-struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuffer)
+static inline struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuffer)
 {
     // Declare header and size
     char header[1024]; insertHeader(header);
@@ -159,7 +203,7 @@ struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuffer)
     // Create output buffer
     uint32_t inputLength = 0;
     uint_fast32_t i;
-    for (i=0; i < pLineBuffer->count; i++)
+    for (i=0; i < pLineBuffer->linesAllocated; i++)
         inputLength += strlen(pLineBuffer->pLines[i]);
 
     struct ByteBuffer *pByteBufferOut = allocByteBuffer(headerLength + inputLength + 1);
@@ -178,33 +222,84 @@ struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuffer)
 }
 
 /**
- * @brief 
+ * @brief Read file into LineBuffer line by line.
  * 
- * @param file 
- * @return struct LineBuffer* 
+ * @param file Filename to read in.
+ * @return struct LineBuffer* A completely heap allocated LineBuffer struct.
  * 
  * @warning Make sure to free LineBuffer!
  */
 static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
 {
     // Open inFile
+    FILE *fp = fopen(file, "r");
+    if (fp == NULL)
+    {
+        fputs("Couldn't open file!", stderr);
+        return NULL;
+    }
+
+    // Create LineBuffer with initial size
+    struct LineBuffer *pLineBuffer = allocLineBuffer(GCODE_INITIAL_LINE_BUFFER_SIZE);
 
     // Read inFile lines into LineBuffer
+    char *readRes; 
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    uint_fast32_t index = 0;
+    while (1)
+    {
+        // Check if we should allocate more lines
+        if (pLineBuffer->linesAllocated == pLineBuffer->count)
+            reallocLineBuffer(pLineBuffer, 0);
+        
+        // Read into temp buffer
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+            break;
+
+        // Copy into LineBuffer
+        pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));
+        pLineBuffer->linesAllocated++;
+        strcpy(pLineBuffer->pLines[index], tmpLine);
+
+        // Increment
+        index++;
+    };
 
     // Close inFile
+    fclose(fp);
 
     // Return
+    return pLineBuffer;
 }
 
-static inline void writeByteBufferToFile(const char* file, const ByteBuffer* byteBuffer)
+/**
+ * @brief Writes the whole ByteBuffer to the given file.
+ * 
+ * @param file: File to Write ByteBuffer to.
+ * @param byteBuffer: ByteBuffer.
+ * @return int 0 if everything went OK.
+ */
+static inline int writeByteBufferToFile(const char* file, const struct ByteBuffer* byteBuffer)
 {
     // Open file
+    FILE *fp = fopen(file, "w+");
+    if (fp == NULL)
+    {
+        fputs("Error couldn't open file which to write to!", stderr);
+        return -1;
+    }
 
     // Write to file
+    fwrite(byteBuffer->buffer, sizeof(char), byteBuffer->size, fp);
 
     // Close file
+    fclose(fp);
 
     // Return
+    return 0;
 }
 
 /**
@@ -217,12 +312,17 @@ static inline void writeByteBufferToFile(const char* file, const ByteBuffer* byt
 RESULT gCodeRevert(const char* inFilename, const char* outFilename)
 {
     // Read inFile to LineBuffer -readFileIntoLineBuffer()
+    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename);
 
     // Create and fill a ByteBuffer with header and reverted code -fillOutBuffer()
+    struct ByteBuffer *pByteBuffer = fillOutBuffer(pLineBuffer);
 
     // Write the whole ByteBuffer to outFile -writeByteBufferToFile()
+    writeByteBufferToFile(outFilename, pByteBuffer);
 
     // Free everything
+    freeLineBuffer(pLineBuffer);
+    freeByteBuffer(pByteBuffer);
 
     return OK;
 }

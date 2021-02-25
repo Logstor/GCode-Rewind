@@ -2,6 +2,7 @@
 
 // Generated GCode from tests
 test/res/result.gcode
+bench/out/**
 
 // All generated binaries
 bin*

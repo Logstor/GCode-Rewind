@@ -13,20 +13,26 @@ TESTSOURCE := test/src/*.c
 BENCHBIN := bench/bin/benchbin
 TESTBIN := test/bin/testbin
 
+build: buildtest buildbench
+
+buildtest:
+	@echo
+	@echo -- Compiling test source --
+	@$(COMPILER) $(TESTFLAGS) $(TESTSOURCE) -o $(TESTBIN)
+	@echo
+	@echo -- Done! --
+
+buildbench:
+	@echo
+	@echo -- Compiling bench source --
+	@$(BENCHCOMPILER) $(BENCHFLAGS) $(BENCHSOURCE) -o $(BENCHBIN)
+	@echo
+	@echo -- Done! --
+
 test: test/src/main.c
 	@echo
 	@echo -- Compiling test source --
 	@$(COMPILER) $(TESTFLAGS) $(TESTSOURCE) -o $(TESTBIN)
-	@echo -- Running the tests --
-	@echo
-	@./$(TESTBIN)
-	@echo
-	@echo -- DONE! --
-
-teststack: test/src/main.c
-	@echo
-	@echo -- Compiling test source --
-	@$(COMPILER) $(TESTFLAGS) -DGCODE_USE_STACK_MEM $(TESTSOURCE) -o $(TESTBIN)
 	@echo -- Running the tests --
 	@echo
 	@./$(TESTBIN)
@@ -44,22 +50,9 @@ bench: bench/src/bench.cpp
 	@echo
 	@echo -- DONE! --
 
-benchstack: bench/src/bench.cpp
-	@echo
-	@echo -- Compiling bench source --
-	@$(BENCHCOMPILER) $(BENCHFLAGS) -DGCODE_USE_STACK_MEM $(BENCHSOURCE) -o $(BENCHBIN)
-	@echo
-	@echo -- Running the benchmarks --
-	@echo
-	@./$(BENCHBIN)
-	@echo
-	@echo -- DONE! --
-
 # Static and Dynamic Analysis with Valgrind
 valgrind: test/src/main.c
 	@echo
-	@echo -- Compiling test source --
-	@$(COMPILER) $(TESTFLAGS) $(TESTSOURCE) -o $(TESTBIN)
 	@echo -- Running the tests --
 	@echo
 	@$(VALGRIND) $(VALGRINDFLAGS) $(TESTBIN)

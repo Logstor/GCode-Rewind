@@ -17,8 +17,6 @@ int setup()
     }
 
     // Add Unit tests
-    CU_ADD_TEST(unitSuite, countNumberOfLinesTest);
-    CU_ADD_TEST(unitSuite, insertHeaderTest);
     CU_ADD_TEST(unitSuite, gCodeRewindTest);
     
     return 0;
