@@ -334,7 +334,7 @@ static inline int writeByteBufferToFile(const char* file, const struct ByteBuffe
     FILE *fp = fopen(file, "w+");
     if (fp == NULL)
     {
-        fputs("Error couldn't open file which to write to!", stderr);
+        fputs("Error couldn't open file which to write to!\n", stderr);
         return -1;
     }
 

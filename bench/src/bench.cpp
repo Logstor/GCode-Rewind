@@ -1,18 +1,22 @@
 #include <benchmark/benchmark.h>
 
 #include "../../src/gcodeRewind.h"
+#include <stdio.h>
 
 // 
 static void BM_gCodeRevert(benchmark::State& state) 
 {
   // Setup
   const char testFile[] = "res/small/test1.gcode";
-  const char resFile[]  = "bench/out/result1.gcode";
+  const char resFile[]  = "res/result1.gcode";
 
   for (auto _ : state)
   {
     gCodeRevert(testFile, resFile);
   }
+
+  remove(resFile);
+
 }
 BENCHMARK(BM_gCodeRevert);
 
