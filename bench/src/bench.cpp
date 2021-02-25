@@ -19,6 +19,7 @@ static void BM_gCodeRevert(benchmark::State& state)
 }
 BENCHMARK(BM_gCodeRevert);
 
+#ifdef GCODE_REWIND_TRY_TESTS
 // 
 static void BM_gCodeRevertTry(benchmark::State& state) 
 {
@@ -34,6 +35,7 @@ static void BM_gCodeRevertTry(benchmark::State& state)
   remove(resFile);
 }
 BENCHMARK(BM_gCodeRevertTry);
+#endif
 
 // Run the Benchmark
 BENCHMARK_MAIN();

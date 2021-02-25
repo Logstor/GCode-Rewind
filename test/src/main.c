@@ -6,7 +6,7 @@
 
 #include "tests.h"
 
-#define GCODE_REWIND_TRY_TESTS
+//#define GCODE_REWIND_TRY_TESTS
 
 int setup() 
 {
@@ -21,7 +21,7 @@ int setup()
     // Add Unit tests
     CU_ADD_TEST(unitSuite, gCodeRewindTest);
 #ifdef GCODE_REWIND_TEST_BIG 
-    //CU_ADD_TEST(unitSuite, gCodeRewindBigTest);
+    CU_ADD_TEST(unitSuite, gCodeRewindBigTest);
 #endif
 
 #ifdef GCODE_REWIND_TRY_TESTS
