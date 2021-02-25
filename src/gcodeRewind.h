@@ -406,10 +406,12 @@ static inline struct ByteBuffer* fillOutBufferTry(const struct LineBuffer* pLine
     // Insert header to buffer
     strcpy(pByteBufferOut->buffer, header);
 
+    void *pos = pByteBufferOut->buffer + headerLength;
     // Reverse code into buffer
     while (i != 0)
     {
-        strcat(pByteBufferOut->buffer, pLineBuffer->pLines[--i]);
+        //strcat(pByteBufferOut->buffer, pLineBuffer->pLines[--i]);
+        pos = memccpy(pos, pLineBuffer->pLines[--i], '\0', GCODE_LINE_BUFFER_LINE_LENGTH) - 1;
     }
 
     // Return the ByteBuffer

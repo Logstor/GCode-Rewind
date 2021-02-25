@@ -10,7 +10,7 @@
 void gCodeRewindTryTest()
 {
     const char testFilename[]   = "test/res/test1.gcode";
-    const char resultFilename[] = "test/res/result.gcode";
+    const char resultFilename[] = "test/res/resulttry.gcode";
 
     RESULT res = gCodeRevertTry(testFilename, resultFilename);
 
