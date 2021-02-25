@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 
 #define GCODE_INITIAL_LINE_BUFFER_SIZE 2
 #define GCODE_LINE_BUFFER_LINE_LENGTH 50
@@ -111,10 +112,10 @@ static inline int reallocLineBuffer(struct LineBuffer* lineBuffer, const size_t 
     if (nCount == 0)
     {
         const size_t newCount = lineBuffer->count * 2;
-        nptr = (char**) realloc(lineBuffer->pLines, newCount);
+        nptr = (char**) realloc(lineBuffer->pLines, newCount * sizeof(char*));
         if (nptr == NULL)
         {
-            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\n", newCount);
+            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\nErrorMsg: %s\n", newCount, strerror(errno));
             return -1;
         }
         lineBuffer->pLines = (char**) nptr;
@@ -124,10 +125,10 @@ static inline int reallocLineBuffer(struct LineBuffer* lineBuffer, const size_t 
     // Allocate the given size to the LineBuffer and update
     else
     {
-        nptr = (char**) realloc(lineBuffer->pLines, nCount);
+        nptr = (char**) realloc(lineBuffer->pLines, nCount * sizeof(char*));
         if (nptr == NULL)
         {
-            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\n", nCount);
+            fprintf(stderr, "Reallocation of LineBuffer failed reallocation of %lu lines\nErrorMsg: %s\n", nCount, strerror(errno));
             return -1;
         }
         lineBuffer->pLines = (char**) nptr;
