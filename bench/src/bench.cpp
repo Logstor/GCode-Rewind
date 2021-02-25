@@ -16,7 +16,6 @@ static void BM_gCodeRevert(benchmark::State& state)
   }
 
   remove(resFile);
-
 }
 BENCHMARK(BM_gCodeRevert);
 
