@@ -240,7 +240,7 @@ static inline struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuf
     void *pos = pByteBufferOut->buffer + headerLength;
     while (i != 0)
     {
-        pos = memccpy(pos, pLineBuffer->pLines[--i], '\0', GCODE_LINE_BUFFER_LINE_LENGTH) - 1;
+        pos = (char*) memccpy(pos, pLineBuffer->pLines[--i], '\0', GCODE_LINE_BUFFER_LINE_LENGTH) - 1;
     }
 
     // Return the ByteBuffer
