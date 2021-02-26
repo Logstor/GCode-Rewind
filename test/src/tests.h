@@ -7,22 +7,15 @@
 #include <CUnit/CUnit.h>
 #include <stdio.h>
 
+//#define GCODE_REWIND_TRY_TESTS
+
+#ifdef GCODE_REWIND_TRY_TESTS
 void gCodeRewindTryTest()
 {
     const char testFilename[]   = "test/res/test1.gcode";
     const char resultFilename[] = "test/res/resulttry.gcode";
 
     RESULT res = gCodeRevertTry(testFilename, resultFilename);
-
-    CU_ASSERT_EQUAL(res, OK);
-}
-
-void gCodeRewindTest()
-{
-    const char testFilename[]   = "test/res/test1.gcode";
-    const char resultFilename[] = "test/res/result.gcode";
-
-    RESULT res = gCodeRevert(testFilename, resultFilename);
 
     CU_ASSERT_EQUAL(res, OK);
 }
@@ -47,6 +40,18 @@ void gCodeRewindBigTryTest()
 
     remove(resFilename);
 }
+#endif
+
+void gCodeRewindTest()
+{
+    const char testFilename[]   = "test/res/test1.gcode";
+    const char resultFilename[] = "test/res/result.gcode";
+
+    RESULT res = gCodeRevert(testFilename, resultFilename);
+
+    CU_ASSERT_EQUAL(res, OK);
+}
+
 
 void gCodeRewindBigTest()
 {
