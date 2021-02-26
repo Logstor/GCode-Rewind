@@ -3,6 +3,8 @@
 #include "../../src/gcodeRewind.h"
 #include <stdio.h>
 
+#define GCODE_REWIND_TRY_TESTS
+
 // 
 static void BM_gCodeRevert(benchmark::State& state) 
 {
