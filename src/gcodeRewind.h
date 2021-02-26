@@ -265,6 +265,27 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
+    // Move fp until first layer
+    char *readRes; 
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    while (1)
+    {
+        // Get the next line
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+        {
+            fprintf(stderr, "\nError: Didn't find the first layer!\n");
+            fclose(fp);
+            return NULL;
+        }
+
+        // Check if we reached the start of the first layer
+        if (strstr(tmpLine, "Layer #0") != NULL)
+            break;
+    }
+
     // Create LineBuffer with initial size
     struct LineBuffer *pLineBuffer = allocLineBuffer(GCODE_INITIAL_LINE_BUFFER_SIZE);
     if (pLineBuffer == NULL)
@@ -273,12 +294,20 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
-    // Read inFile lines into LineBuffer
-    char *readRes; 
-    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    // Read into LineBuffer
     uint_fast32_t index = 0;
     while (1)
     {
+        // Read into temp buffer
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+            break;
+        // Check if we should ignore the line
+        else if (*tmpLine == '\n' || *tmpLine == ';')
+            continue;
+
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
         {
@@ -289,13 +318,6 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
                 return NULL;
             }
         }
-        
-        // Read into temp buffer
-        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
-
-        // Check if there was a line
-        if (readRes == NULL)
-            break;
 
         // Copy into LineBuffer
         pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));

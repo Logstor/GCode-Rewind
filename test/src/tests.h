@@ -7,7 +7,7 @@
 #include <CUnit/CUnit.h>
 #include <stdio.h>
 
-#define GCODE_REWIND_TRY_TESTS
+//#define GCODE_REWIND_TRY_TESTS
 
 #ifdef GCODE_REWIND_TRY_TESTS
 void gCodeRewindTryTest()
