@@ -421,6 +421,16 @@ static inline struct LineBuffer* readFileIntoLineBufferTry(const char* file)
     uint_fast32_t index = 0;
     while (1)
     {
+        // Read into temp buffer
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+            break;
+        // Check if we should ignore the line
+        else if (*tmpLine == '\n' || *tmpLine == ';')
+            continue;
+
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
         {
@@ -431,16 +441,6 @@ static inline struct LineBuffer* readFileIntoLineBufferTry(const char* file)
                 return NULL;
             }
         }
-        
-        // Read into temp buffer
-        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
-
-        // Check if there was a line
-        if (readRes == NULL)
-            break;
-        // Check if we should ignore the line
-        else if (*tmpLine == '\n' || *tmpLine == ';')
-            continue;
 
         // Copy into LineBuffer
         pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));
