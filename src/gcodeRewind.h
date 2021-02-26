@@ -10,7 +10,7 @@
 #include <errno.h>
 
 #define GCODE_INITIAL_LINE_BUFFER_SIZE 2
-#define GCODE_LINE_BUFFER_LINE_LENGTH 50
+#define GCODE_LINE_BUFFER_LINE_LENGTH 80
 
 /**
  * @brief Used as return type of library functions to indicate if everything went well.
@@ -186,7 +186,7 @@ static inline struct ByteBuffer* allocByteBuffer(const size_t size)
 static inline void insertHeader(char* buffer)
 {
     strcpy(buffer, 
-    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n"
+    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\n\n"
     );
 }
 
@@ -202,7 +202,7 @@ static inline void insertHeader(char* buffer)
 static inline void insertnHeader(struct ByteBuffer *byteBuffer)
 {
     strncpy(byteBuffer->buffer, 
-    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\nG1 U0 F6000.00 ; Set default printing speed\n\n", 
+    "T0 ; Select head 0\nM302 P1 ; Allow cold extrusion\nG90 ; Absolute position\nM83 ; Relative extrusion\nG21 ; Metric values\n\n", 
     byteBuffer->size
     );
 }
@@ -265,6 +265,27 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
+    // Move fp until first layer
+    char *readRes; 
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    while (1)
+    {
+        // Get the next line
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+        {
+            fprintf(stderr, "\nError: Didn't find the first layer!\n");
+            fclose(fp);
+            return NULL;
+        }
+
+        // Check if we reached the start of the first layer
+        if (strstr(tmpLine, "Layer #0") != NULL)
+            break;
+    }
+
     // Create LineBuffer with initial size
     struct LineBuffer *pLineBuffer = allocLineBuffer(GCODE_INITIAL_LINE_BUFFER_SIZE);
     if (pLineBuffer == NULL)
@@ -273,12 +294,20 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
-    // Read inFile lines into LineBuffer
-    char *readRes; 
-    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    // Read into LineBuffer
     uint_fast32_t index = 0;
     while (1)
     {
+        // Read into temp buffer
+        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readRes == NULL)
+            break;
+        // Check if we should ignore the line
+        else if (*tmpLine == '\n' || *tmpLine == ';')
+            continue;
+
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
         {
@@ -289,13 +318,6 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
                 return NULL;
             }
         }
-        
-        // Read into temp buffer
-        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
-
-        // Check if there was a line
-        if (readRes == NULL)
-            break;
 
         // Copy into LineBuffer
         pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));
@@ -377,6 +399,5 @@ RESULT gCodeRevert(const char* inFilename, const char* outFilename)
 }
 
 /* ------------------------ Testing area ------------------------ */
-
 
 #endif // GCODEREWIND_H
