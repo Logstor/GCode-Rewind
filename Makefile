@@ -2,7 +2,7 @@ COMPILER := gcc
 BENCHCOMPILER := g++
 VALGRIND := valgrind
 
-BENCHFLAGS := -O2 -std=c++11 -lbenchmark -lpthread 
+BENCHFLAGS := -O3 -std=c++11 -lbenchmark -lpthread 
 TESTFLAGS := -Wall -ggdb3 -fstack-protector-strong -Wpedantic -Wextra -O0 -lcunit 
 VALGRINDFLAGS := --leak-check=full --track-origins=yes --track-fds=yes --time-stamp=yes
 
