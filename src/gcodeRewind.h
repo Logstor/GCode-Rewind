@@ -10,7 +10,7 @@
 #include <errno.h>
 
 #define GCODE_INITIAL_LINE_BUFFER_SIZE 2
-#define GCODE_LINE_BUFFER_LINE_LENGTH 50
+#define GCODE_LINE_BUFFER_LINE_LENGTH 80
 
 /**
  * @brief Used as return type of library functions to indicate if everything went well.
@@ -438,6 +438,9 @@ static inline struct LineBuffer* readFileIntoLineBufferTry(const char* file)
         // Check if there was a line
         if (readRes == NULL)
             break;
+        // Check if we should ignore the line
+        else if (*tmpLine == '\n' || *tmpLine == ';')
+            continue;
 
         // Copy into LineBuffer
         pLineBuffer->pLines[index] = (char*) malloc(GCODE_LINE_BUFFER_LINE_LENGTH * sizeof(char));
