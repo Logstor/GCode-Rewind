@@ -9,8 +9,8 @@
 
 //#define GCODE_REWIND_TRY_TESTS
 
-const struct RewindSettings settings0 = { .byteOffset = 0, .stopExtrusion = true };
-const struct RewindSettings settings1 = { .byteOffset = 0, .stopExtrusion = false };
+const struct RewindSettings settings0 = { .byteOffset = 0, .maxLayers = 2, .stopExtrusion = true };
+const struct RewindSettings settings1 = { .byteOffset = 0, .maxLayers = 2, .stopExtrusion = false };
 
 #ifdef GCODE_REWIND_TRY_TESTS
 void gCodeRewindTryTest()
