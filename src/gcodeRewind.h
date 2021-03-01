@@ -381,11 +381,11 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         return NULL;
     }
 
-    // Move fp forward to first layer
-    int_fast32_t currLayer;
-    if( (currLayer = fdToLayer(fp, settings->endLayer)) == -1 )
+    // Move fp forward to the specified end layer
+    int_fast32_t currLayer = fdToLayer(fp, settings->endLayer);
+    if(currLayer != settings->endLayer)
     {
-        fprintf(stderr, "\nError: Didn't find the first layer!\n");
+        fprintf(stderr, "\nError: Didn't find the end layer!\n\tFound: %li\n", currLayer);
         fclose(fp);
         return NULL;
     }
@@ -413,11 +413,6 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         // Check if we should ignore the line
         else if (*tmpLine == '\n')
             continue;
-        // Check if we hit a new layer
-        else if (strstr(tmpLine, "Layer #") != NULL)
-        {
-
-        }
 
         // Disable extrusion if not comment
         if (settings->stopExtrusion && tmpLine[0] != ';')
