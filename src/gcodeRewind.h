@@ -248,6 +248,46 @@ static inline struct ByteBuffer* fillOutBuffer(const struct LineBuffer* pLineBuf
 }
 
 /**
+ * @brief Looks for the 'E' parameter and sets the trailing numbers to Zero.
+ * 
+ * @param line Null terminated string
+ * 
+ * @note Make sure the char* is Null terminated!
+ */
+static inline void disableExtrusion(char* line)
+{
+    // Find 'E' parameter
+    char *ptr = strchr(line, 'E');
+
+    // Make sure it's found
+    if (ptr == NULL)
+        return;
+
+    // Overwrite value
+    char *periodPtr = strchr(ptr, '.');
+    switch (periodPtr - ptr)
+    {
+        default:
+        {
+            fprintf(stderr, "\nError: Hit default branch in disableExtrusion\n\tValue: %lu\n", periodPtr-ptr);
+            return;
+        }
+
+        case 3: // E.g. E18.25 -> E10.25
+        {
+            *(ptr+2) = '0';
+            __attribute__((fallthrough));
+        }
+
+        case 2: // E.g. E2.55 -> 0.55
+        {
+            *(ptr+1) = '0';
+            break;
+        }
+    }
+}
+
+/**
  * @brief Read file into LineBuffer line by line.
  * 
  * @param file Filename to read in.
@@ -265,7 +305,7 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
-    // Move fp until first layer
+    // Move fp forward to first layer
     char *readRes; 
     char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
     while (1)
@@ -307,6 +347,9 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         // Check if we should ignore the line
         else if (*tmpLine == '\n' || *tmpLine == ';')
             continue;
+
+        // Disable extrusion
+        disableExtrusion(tmpLine);
 
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
