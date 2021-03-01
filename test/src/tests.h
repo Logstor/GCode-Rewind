@@ -9,8 +9,9 @@
 
 //#define GCODE_REWIND_TRY_TESTS
 
-const struct RewindSettings settings0 = { .byteOffset = 0, .maxLayers = 2, .stopExtrusion = true };
-const struct RewindSettings settings1 = { .byteOffset = 0, .maxLayers = 2, .stopExtrusion = false };
+const struct RewindSettings settings0 = { .byteOffset = 0, .endLayer = 0, .stopExtrusion = true };
+const struct RewindSettings settings1 = { .byteOffset = 0, .endLayer = 0, .stopExtrusion = false };
+const struct RewindSettings settingsBig = { .byteOffset = 0, .endLayer = 21, .stopExtrusion = false };
 
 #ifdef GCODE_REWIND_TRY_TESTS
 void gCodeRewindTryTest()
@@ -76,8 +77,8 @@ void gCodeRewindBigTest()
 
     // Run tests
     RESULT res1 = gCodeRevert(testFilename1, resFilename, &settings0);
-    RESULT res2 = gCodeRevert(testFilename2, resFilename, &settings0);
-    RESULT res3 = gCodeRevert(testFilename3, resFilename, &settings0);
+    RESULT res2 = gCodeRevert(testFilename2, resFilename, &settings1);
+    RESULT res3 = gCodeRevert(testFilename3, resFilename, &settingsBig);
 
     // Asserts
     CU_ASSERT_EQUAL(res1, OK);

@@ -35,13 +35,14 @@ struct RewindSettings
     const size_t byteOffset;
 
     /**
-     * @brief Maximum number of layers to rewind.
+     * @brief Last layer to revert to.
      * 
-     * If set to 2, then we get a reverted GCode file that includes at maximum 2 layers of reverted GCode.
+     * If set to 2, then the reverted file will include layer 2.
      * 
-     * @note Should be at least set to one.
+     * If it's known that we won't rewind longer than to this layer, then set this to that layer.
+     * 
      */
-    const uint32_t maxLayers;
+    const uint32_t endLayer;
 
     /**
      * @brief Revert with or without extrusion.
@@ -316,35 +317,48 @@ static inline void disableExtrusion(char* line)
 }
 
 /**
- * @brief Moving 'fp' to the first line of the next layer.
+ * @brief Moving 'fp' to the layer given.
  * 
  * This function moves the given file descriptor to the start of the first line 
- * after the next layer.
+ * after the given layer.
  * 
- * If layer isn't found it will return -1 (Non-zero).
+ * It then returns the number of the layer it has hit.
+ * 
+ * If layer isn't found it will return 0.
  * 
  * @param fp File descriptor to be moved.
- * @return int 0 -> Next layer found, -1 -> No next layer
+ * @param layer: Move fp to this layer.
+ * @return int_fast32_t: 0 -> No layer found, Above zero -> The layer number
  */
-static inline int fdToNextLayer(FILE* fp)
+static inline int_fast32_t fdToLayer(FILE* fp, const uint32_t layer)
 {
-    char *readRes; 
+    int_fast32_t foundLayer = -1;
+    char *readLine; 
+    char *readLayer;
     char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
     while (1)
     {
         // Get the next line
-        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+        readLine = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
 
         // Check if there was a line
-        if (readRes == NULL)
+        if (readLine == NULL)
         {
             fprintf(stderr, "\nError: Didn't find more layers!\n");
-            return -1;
+            return foundLayer;
         }
 
         // Check if we reached the start of the next layer
-        if (strstr(tmpLine, "Layer #") != NULL)
-            return 0;
+        readLayer = strstr(tmpLine, "Layer #");
+        if (readLayer != NULL)
+        {
+            // Read in layer number
+            foundLayer = strtol( strstr(readLayer, "#")+1, NULL, 10 );
+            if (foundLayer != layer) continue;
+
+            // Return the layer number
+            return foundLayer;
+        }
     }
 }
 
@@ -368,7 +382,8 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
     }
 
     // Move fp forward to first layer
-    if(fdToNextLayer(fp))
+    int_fast32_t currLayer;
+    if( (currLayer = fdToLayer(fp, settings->endLayer)) == -1 )
     {
         fprintf(stderr, "\nError: Didn't find the first layer!\n");
         fclose(fp);
@@ -398,6 +413,11 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         // Check if we should ignore the line
         else if (*tmpLine == '\n')
             continue;
+        // Check if we hit a new layer
+        else if (strstr(tmpLine, "Layer #") != NULL)
+        {
+
+        }
 
         // Disable extrusion if not comment
         if (settings->stopExtrusion && tmpLine[0] != ';')
