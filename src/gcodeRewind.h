@@ -22,6 +22,12 @@ typedef enum
     FAIL
 } RESULT;
 
+struct RewindSettings
+{
+    const size_t byteOffset;
+    const bool stopExtrusion;
+};
+
 /**
  * @brief A simple buffer struct to contain byte data.
  * 
@@ -290,12 +296,13 @@ static inline void disableExtrusion(char* line)
 /**
  * @brief Read file into LineBuffer line by line.
  * 
- * @param file Filename to read in.
+ * @param file: Filename to read in.
+ * @param settings:
  * @return struct LineBuffer* A completely heap allocated LineBuffer struct.
  * 
  * @warning Make sure to free LineBuffer!
  */
-static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
+static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const struct RewindSettings* settings)
 {
     // Open inFile
     FILE *fp = fopen(file, "r");
@@ -349,7 +356,8 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
             continue;
 
         // Disable extrusion
-        disableExtrusion(tmpLine);
+        if (settings->stopExtrusion)
+            disableExtrusion(tmpLine);
 
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
@@ -417,14 +425,20 @@ static inline int writeByteBufferToFile(const char* file, const struct ByteBuffe
 /**
  * @brief Generates a file from the inFile, which is reverted.
  * 
+ * @param inFilename:
+ * 
+ * @param outFilename:
+ * 
+ * @param settings:
+ * 
  * @return RESULT OK or FAIL
  * 
  * @warning NOT thread safe - Uses unlocked IO functions!
  */
-RESULT gCodeRevert(const char* inFilename, const char* outFilename)
+RESULT gCodeRevert(const char* inFilename, const char* outFilename, const struct RewindSettings* settings)
 {
     // Read inFile to LineBuffer -readFileIntoLineBuffer()
-    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename);
+    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename, settings);
     if (pLineBuffer == NULL)
         return FAIL;
 
