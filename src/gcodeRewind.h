@@ -23,6 +23,35 @@ typedef enum
 } RESULT;
 
 /**
+ * @brief Contains information which defines how the final reverted GCode should be.
+ * 
+ */
+struct RewindSettings
+{
+    /**
+     * @brief Byteoffset to the line which reversion should start.
+     * 
+     */
+    const size_t byteOffset;
+
+    /**
+     * @brief Last layer to revert to.
+     * 
+     * If set to 2, then the reverted file will include layer 2.
+     * 
+     * If it's known that we won't rewind longer than to this layer, then set this to that layer.
+     * 
+     */
+    const uint32_t endLayer;
+
+    /**
+     * @brief Revert with or without extrusion.
+     * 
+     */
+    const bool stopExtrusion;
+};
+
+/**
  * @brief A simple buffer struct to contain byte data.
  * 
  */
@@ -288,14 +317,61 @@ static inline void disableExtrusion(char* line)
 }
 
 /**
+ * @brief Moving 'fp' to the layer given.
+ * 
+ * This function moves the given file descriptor to the start of the first line 
+ * after the given layer.
+ * 
+ * It then returns the number of the layer it has hit.
+ * 
+ * If layer isn't found it will return 0.
+ * 
+ * @param fp File descriptor to be moved.
+ * @param layer: Move fp to this layer.
+ * @return int_fast32_t: 0 -> No layer found, Above zero -> The layer number
+ */
+static inline int_fast32_t fdToLayer(FILE* fp, const uint32_t layer)
+{
+    int_fast32_t foundLayer = -1;
+    char *readLine; 
+    char *readLayer;
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    while (1)
+    {
+        // Get the next line
+        readLine = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
+
+        // Check if there was a line
+        if (readLine == NULL)
+        {
+            fprintf(stderr, "\nError: Didn't find more layers!\n");
+            return foundLayer;
+        }
+
+        // Check if we reached the start of the next layer
+        readLayer = strstr(tmpLine, "Layer #");
+        if (readLayer != NULL)
+        {
+            // Read in layer number
+            foundLayer = strtol( strstr(readLayer, "#")+1, NULL, 10 );
+            if (foundLayer != layer) continue;
+
+            // Return the layer number
+            return foundLayer;
+        }
+    }
+}
+
+/**
  * @brief Read file into LineBuffer line by line.
  * 
- * @param file Filename to read in.
+ * @param file: Filename to read in.
+ * @param settings:
  * @return struct LineBuffer* A completely heap allocated LineBuffer struct.
  * 
  * @warning Make sure to free LineBuffer!
  */
-static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
+static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const struct RewindSettings* settings)
 {
     // Open inFile
     FILE *fp = fopen(file, "r");
@@ -305,25 +381,13 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         return NULL;
     }
 
-    // Move fp forward to first layer
-    char *readRes; 
-    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
-    while (1)
+    // Move fp forward to the specified end layer
+    int_fast32_t currLayer = fdToLayer(fp, settings->endLayer);
+    if(currLayer != settings->endLayer)
     {
-        // Get the next line
-        readRes = fgets(tmpLine, GCODE_LINE_BUFFER_LINE_LENGTH, fp);
-
-        // Check if there was a line
-        if (readRes == NULL)
-        {
-            fprintf(stderr, "\nError: Didn't find the first layer!\n");
-            fclose(fp);
-            return NULL;
-        }
-
-        // Check if we reached the start of the first layer
-        if (strstr(tmpLine, "Layer #0") != NULL)
-            break;
+        fprintf(stderr, "\nError: Didn't find the end layer!\n\tFound: %li\n", currLayer);
+        fclose(fp);
+        return NULL;
     }
 
     // Create LineBuffer with initial size
@@ -335,6 +399,8 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
     }
 
     // Read into LineBuffer
+    char *readRes; 
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
     uint_fast32_t index = 0;
     while (1)
     {
@@ -345,11 +411,12 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file)
         if (readRes == NULL)
             break;
         // Check if we should ignore the line
-        else if (*tmpLine == '\n' || *tmpLine == ';')
+        else if (*tmpLine == '\n')
             continue;
 
-        // Disable extrusion
-        disableExtrusion(tmpLine);
+        // Disable extrusion if not comment
+        if (settings->stopExtrusion && tmpLine[0] != ';')
+            disableExtrusion(tmpLine);
 
         // Check if we should allocate more lines
         if (pLineBuffer->linesAllocated == pLineBuffer->count)
@@ -417,14 +484,20 @@ static inline int writeByteBufferToFile(const char* file, const struct ByteBuffe
 /**
  * @brief Generates a file from the inFile, which is reverted.
  * 
+ * @param inFilename:
+ * 
+ * @param outFilename:
+ * 
+ * @param settings:
+ * 
  * @return RESULT OK or FAIL
  * 
  * @warning NOT thread safe - Uses unlocked IO functions!
  */
-RESULT gCodeRevert(const char* inFilename, const char* outFilename)
+RESULT gCodeRevert(const char* inFilename, const char* outFilename, const struct RewindSettings* settings)
 {
     // Read inFile to LineBuffer -readFileIntoLineBuffer()
-    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename);
+    struct LineBuffer *pLineBuffer = readFileIntoLineBuffer(inFilename, settings);
     if (pLineBuffer == NULL)
         return FAIL;
 
