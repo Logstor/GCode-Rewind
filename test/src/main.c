@@ -19,9 +19,7 @@ int setup()
     // Add Unit tests
     CU_ADD_TEST(unitSuite, gCodeRewindTest);
     CU_ADD_TEST(unitSuite, gCodeRewindTestWithExtrusion);
-#ifdef GCODE_REWIND_TEST_BIG 
     CU_ADD_TEST(unitSuite, gCodeRewindBigTest);
-#endif
 
 #ifdef GCODE_REWIND_TRY_TESTS
     CU_pSuite unitTrySuite = CU_add_suite("Unit try tests", NULL, NULL);

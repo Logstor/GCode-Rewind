@@ -39,6 +39,21 @@ static void BM_gCodeRevertWithExtrusion(benchmark::State& state)
 }
 BENCHMARK(BM_gCodeRevertWithExtrusion);
 
+static void BM_gCodeRevertBig(benchmark::State& state) 
+{
+  // Setup
+  const char testFile[] = "res/big/4housesLH20.gcode";
+  const char resFile[]  = "res/result0.gcode";
+
+  for (auto _ : state)
+  {
+    gCodeRevert(testFile, resFile, &settings0);
+  }
+
+  remove(resFile);
+}
+BENCHMARK(BM_gCodeRevertBig);
+
 #ifdef GCODE_REWIND_TRY_TESTS
 // 
 static void BM_gCodeRevertTry(benchmark::State& state) 

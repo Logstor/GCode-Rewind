@@ -66,7 +66,6 @@ void gCodeRewindTestWithExtrusion()
     CU_ASSERT_EQUAL(res, OK);
 }
 
-
 void gCodeRewindBigTest()
 {
     const char testFilename1[]  = "res/big/AngolaHouseLH40.gcode";
