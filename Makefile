@@ -24,13 +24,6 @@ buildtest:
 	@echo
 	@echo -- Done! --
 
-buildtestbig:
-	@echo
-	@echo -- Compiling test source --
-	@$(COMPILER) $(TESTFLAGS) -DGCODE_REWIND_TEST_BIG $(TESTSOURCE) -o $(TESTBIN)
-	@echo
-	@echo -- Done! --
-
 buildbench:
 	@echo
 	@echo -- Compiling bench source --
@@ -39,13 +32,6 @@ buildbench:
 	@echo -- Done! --
 
 test: buildtest
-	@echo -- Running the tests --
-	@echo
-	@./$(TESTBIN)
-	@echo
-	@echo -- DONE! --
-
-testbig: buildtestbig
 	@echo -- Running the tests --
 	@echo
 	@./$(TESTBIN)
@@ -69,18 +55,14 @@ staticanalysis:
 
 valgrind: test/src/main.c
 	@echo
+	@echo -- Compiling test source --
+	@$(COMPILER) $(TESTFLAGS) -DGCODE_REWIND_ONLY_SMALL_TESTS $(TESTSOURCE) -o $(TESTBIN)
+	@echo
+	@echo -- Done! --
 	@echo -- Running the tests --
 	@echo
 	@$(VALGRIND) $(VALGRINDFLAGS) $(TESTBIN)
 	@echo
-	@echo -- DONE! --
-
-valgrindbench: test/src/main.c
-	@echo
-	@echo -- Running the benchmarks --
-	@echo
-	@$(VALGRIND) $(VALGRINDFLAGS) $(BENCHBIN)
-	@echo 
 	@echo -- DONE! --
 
 docs: Doxyfile
