@@ -276,6 +276,7 @@ static inline void disableExtrusion(char* line)
         case 3: // E.g. E18.25 -> E10.25
         {
             *(ptr+2) = '0';
+            __attribute__((fallthrough));
         }
 
         case 2: // E.g. E2.55 -> 0.55
