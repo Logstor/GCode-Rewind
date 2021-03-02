@@ -9,8 +9,8 @@
 
 //#define GCODE_REWIND_TRY_TESTS
 
-const struct RewindSettings settings0 = { .byteOffset = 0, .endLayer = 0, .stopExtrusion = true };
-const struct RewindSettings settings1 = { .byteOffset = 0, .endLayer = 0, .stopExtrusion = false };
+const struct RewindSettings settings0 = { .byteOffset = 885, .endLayer = 0, .stopExtrusion = true };
+const struct RewindSettings settings1 = { .byteOffset = 950, .endLayer = 0, .stopExtrusion = false };
 const struct RewindSettings settingsBig = { .byteOffset = 0, .endLayer = 21, .stopExtrusion = false };
 
 #ifdef GCODE_REWIND_TRY_TESTS
@@ -54,6 +54,35 @@ void gCodeRewindTest()
     RESULT res = gCodeRevert(testFilename, resultFilename, &settings0);
 
     CU_ASSERT_EQUAL(res, OK);
+
+    // Read whole the resulting file and check if it's valid
+    FILE* fdRes = fopen(resultFilename, "r");
+    FILE* fdVal = fopen("test/res/validate.gcode", "r");
+
+    // Check size
+    fseek(fdRes, 0, SEEK_END);
+    fseek(fdVal, 0, SEEK_END);
+    const off_t resSize = ftello(fdRes);
+    const off_t valSize = ftello(fdVal);
+    rewind(fdRes);
+    rewind(fdVal);
+
+    CU_ASSERT_EQUAL(resSize, valSize);
+
+    // Check data
+    char* resBuffer[resSize];
+    char* valBuffer[valSize];
+
+    fread(resBuffer, sizeof(char), resSize, fdRes);
+    fread(valBuffer, sizeof(char), valSize, fdVal);
+
+    const int cmpRes = memcmp(resBuffer, valBuffer, resSize);
+    const int cmpVal = memcmp(valBuffer, resBuffer, valSize);
+
+    CU_ASSERT_EQUAL(cmpRes, cmpVal);
+
+    // Close everything
+    fclose(fdRes); fclose(fdVal);
 }
 
 void gCodeRewindTestWithExtrusion()

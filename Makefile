@@ -4,7 +4,7 @@ VALGRIND := valgrind
 
 BENCHFLAGS := -O3 -std=c++11 -lbenchmark -lpthread 
 TESTFLAGS := -Wall -ggdb3 -fstack-protector-strong -Wpedantic -Wextra -O0 -lcunit 
-VALGRINDFLAGS := --leak-check=full --track-origins=yes --track-fds=yes --time-stamp=yes
+VALGRINDFLAGS := --leak-check=full --show-leak-kinds=all --track-origins=yes --track-fds=yes --time-stamp=yes
 
 SOURCE := $(src/**)
 BENCHSOURCE := bench/src/*.cpp
@@ -31,6 +31,13 @@ buildbench:
 	@echo
 	@echo -- Done! --
 
+buildbenchtry:
+	@echo
+	@echo -- Compiling bench source --
+	@$(BENCHCOMPILER) $(BENCHFLAGS) -DGCODE_REWIND_TRY_TESTS $(BENCHSOURCE) -o $(BENCHBIN)
+	@echo
+	@echo -- Done! --
+
 test: buildtest
 	@echo -- Running the tests --
 	@echo
@@ -39,6 +46,13 @@ test: buildtest
 	@echo -- DONE! --
 
 bench: buildbench
+	@echo -- Running the benchmarks --
+	@echo
+	@./$(BENCHBIN)
+	@echo
+	@echo -- DONE! --
+
+benchtry: buildbenchtry
 	@echo -- Running the benchmarks --
 	@echo
 	@./$(BENCHBIN)
