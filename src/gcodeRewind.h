@@ -481,7 +481,7 @@ static inline int writeByteBufferToFile(const char* file, const struct ByteBuffe
     }
 
     // Write to file
-    fwrite(byteBuffer->buffer, sizeof(char), byteBuffer->size, fp);
+    fwrite(byteBuffer->buffer, sizeof(char), byteBuffer->size-1, fp);
 
     // Close file
     fclose(fp);
