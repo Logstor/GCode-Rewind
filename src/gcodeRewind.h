@@ -410,6 +410,9 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         // Check if there was a line
         if (readRes == NULL)
             break;
+        // Check if we're past the byteoffset
+        else if (ftello(fp) > settings->byteOffset)
+            break;
         // Check if we should ignore the line
         else if (*tmpLine == '\n')
             continue;
