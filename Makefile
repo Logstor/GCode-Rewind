@@ -31,6 +31,13 @@ buildbench:
 	@echo
 	@echo -- Done! --
 
+buildbenchtry:
+	@echo
+	@echo -- Compiling bench source --
+	@$(BENCHCOMPILER) $(BENCHFLAGS) -DGCODE_REWIND_TRY_TESTS $(BENCHSOURCE) -o $(BENCHBIN)
+	@echo
+	@echo -- Done! --
+
 test: buildtest
 	@echo -- Running the tests --
 	@echo
@@ -39,6 +46,13 @@ test: buildtest
 	@echo -- DONE! --
 
 bench: buildbench
+	@echo -- Running the benchmarks --
+	@echo
+	@./$(BENCHBIN)
+	@echo
+	@echo -- DONE! --
+
+benchtry: buildbenchtry
 	@echo -- Running the benchmarks --
 	@echo
 	@./$(BENCHBIN)

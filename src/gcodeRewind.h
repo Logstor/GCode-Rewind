@@ -381,7 +381,8 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         return NULL;
     }
 
-    // Move fp forward to the specified end layer
+    // Move fp forward to the specified end layer and keep track of offset
+    off_t currOffset = 0;
     int_fast32_t currLayer = fdToLayer(fp, settings->endLayer);
     if(currLayer != settings->endLayer)
     {
@@ -389,6 +390,7 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         fclose(fp);
         return NULL;
     }
+    currOffset = ftello(fp);
 
     // Create LineBuffer with initial size
     struct LineBuffer *pLineBuffer = allocLineBuffer(GCODE_INITIAL_LINE_BUFFER_SIZE);
@@ -400,7 +402,7 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
 
     // Read into LineBuffer
     char *readRes; 
-    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH]; 
+    char tmpLine[GCODE_LINE_BUFFER_LINE_LENGTH];
     uint_fast32_t index = 0;
     while (1)
     {
@@ -410,8 +412,12 @@ static inline struct LineBuffer* readFileIntoLineBuffer(const char* file, const 
         // Check if there was a line
         if (readRes == NULL)
             break;
+
+        // Update offset
+        currOffset += strlen(tmpLine);
+        
         // Check if we're past the byteoffset
-        else if (ftello(fp) > settings->byteOffset)
+        if (currOffset > settings->byteOffset)
             break;
         // Check if we should ignore the line
         else if (*tmpLine == '\n')
@@ -518,5 +524,6 @@ RESULT gCodeRevert(const char* inFilename, const char* outFilename, const struct
 }
 
 /* ------------------------ Testing area ------------------------ */
+
 
 #endif // GCODEREWIND_H
