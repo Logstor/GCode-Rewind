@@ -32,7 +32,7 @@ struct RewindSettings
      * @brief Byteoffset to the line which reversion should start.
      * 
      */
-    const size_t byteOffset;
+    const off_t byteOffset;
 
     /**
      * @brief Last layer to revert to.
